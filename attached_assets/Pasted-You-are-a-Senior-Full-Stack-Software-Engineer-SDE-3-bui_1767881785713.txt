@@ -1,0 +1,202 @@
+You are a **Senior Full Stack Software Engineer (SDE-3)** building a **modern, competition-grade online quiz platform** with a **2030-style UI inspired by 21st.dev**.
+
+This is **not an admin-driven system**.
+All quiz content is **JSON-based**, preloaded or fetched from a secure endpoint.
+
+The product must feel:
+
+* Ultra-modern
+* Smooth
+* Minimal
+* High-trust
+* Premium (startup-grade)
+
+---
+
+## 🎯 Core Concept
+
+A **single-attempt, timed competitive quiz web app** where:
+
+* Users authenticate via Google
+* Quiz questions are loaded from structured JSON
+* The quiz experience is immersive, animated, and distraction-free
+* Results and leaderboard are auto-generated
+
+Think **Vercel + Linear + Raycast UI quality**, not a college project.
+
+---
+
+## 🧩 Functional Requirements
+
+### 1. Authentication & Attempt Control
+
+* Google Authentication only
+* One Google account = one quiz attempt (hard lock)
+* Attempt state must persist across refresh, reconnect, or accidental close
+* No admin overrides, no reset UI
+* Once submitted or terminated → permanently locked
+
+---
+
+### 2. JSON-Driven Quiz Engine (No Admin Panel)
+
+* Quiz questions are loaded from a **static or remote JSON file**
+* JSON schema supports:
+
+  * Question ID
+  * Type:
+
+    * MCQ (single correct)
+    * MCQ (multiple correct)
+    * True / False
+    * Code output (optional)
+  * Options
+  * Correct answer(s)
+  * Difficulty (Easy / Medium / Hard)
+  * Optional explanation
+* Validate JSON at runtime
+* Graceful fallback if JSON is malformed
+
+---
+
+### 3. Timed Quiz Flow
+
+* Timer starts only after user clicks **“Start Quiz”**
+* Sticky floating timer with subtle animation
+* Auto-submit on timeout
+* Confirmation modal before manual submit
+* Save answers incrementally (every change)
+
+---
+
+### 4. Anti-Cheat (Soft but Effective)
+
+* Randomized question order per user
+* Randomized option order per question
+* Detect tab switch / window blur:
+
+  * First 2 times → animated warning toast
+  * 3rd time → auto-submit + lock
+* Disable copy/paste where feasible
+* Prevent reload abuse using persisted state
+
+---
+
+### 5. Evaluation & Scoring
+
+* Auto-evaluate on submit or timeout
+* Score formula:
+
+  * Accuracy
+  * Time taken (weighted)
+* Tie-breakers:
+
+  1. Higher score
+  2. Higher accuracy
+  3. Lower time taken
+* Evaluation must be deterministic and reproducible
+
+---
+
+### 6. Leaderboard
+
+* Auto-generated from attempts
+* Display:
+
+  * Rank
+  * Name
+  * Score
+  * Accuracy %
+  * Time taken
+* Smooth animated rank transitions
+* Final leaderboard freezes after quiz end
+
+---
+
+## 🎨 UI / UX (EXTREMELY IMPORTANT)
+
+Design language:
+
+* **21st.dev / 2030 UI**
+* Glassmorphism / soft gradients
+* Floating cards with depth
+* Subtle motion everywhere (but never distracting)
+
+UI requirements:
+
+* Card-based layout
+* Animated transitions between questions
+* Progress indicator with micro-interactions
+* Framer Motion–style easing
+* Mobile-first, thumb-friendly
+* Dark mode default (with optional light mode)
+
+Avoid:
+
+* Clutter
+* Heavy borders
+* Cheap gradients
+* Bootstrap-style layouts
+
+---
+
+## 🛠️ Tech Stack (Strict)
+
+**Frontend**
+
+* Next.js (App Router)
+* Tailwind CSS
+* Framer Motion
+* shadcn/ui or equivalent modern primitives
+
+**Backend**
+
+* Node.js + lightweight API routes
+* Secure evaluation logic (no client trust)
+
+**Database**
+
+* Firebase / MongoDB
+* Collections:
+
+  * Users
+  * Attempts
+  * Leaderboard
+
+**Auth**
+
+* Firebase Google Auth
+
+**Hosting**
+
+* Vercel (Frontend)
+* Serverless or Render (Backend)
+
+---
+
+## 🧱 Engineering Standards
+
+* Clean folder structure
+* Modular components
+* Strong typing (TypeScript preferred)
+* Defensive programming
+* Edge-case safe (refresh, timeout, disconnect)
+* Production-quality comments only where needed
+
+---
+
+## 📦 Required Outputs
+
+1. High-level architecture
+2. JSON schema for questions
+3. API design
+4. Frontend component hierarchy
+5. Anti-cheat logic explanation
+6. Scoring algorithm
+7. UI animation strategy
+8. Deployment checklist
+
+---
+
+Build this like a **real startup product**, not a demo.
+Every decision should optimize for **fairness, polish, and trust**.
