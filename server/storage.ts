@@ -11,6 +11,7 @@ export interface IStorage {
   updateAttempt(attemptId: string, updates: Partial<InsertAttempt>): Promise<Attempt>;
   finishAttempt(attemptId: string, score: number, accuracy: number, timeTakenSeconds: number): Promise<Attempt>;
   getLeaderboard(): Promise<(Attempt & { user: User })[]>;
+  deleteAttempt(userId: string): Promise<void>;
 }
 
 export class FirebaseStorage implements IStorage {
@@ -112,6 +113,15 @@ export class FirebaseStorage implements IStorage {
       const timeB = b.timeTakenSeconds || 0;
       return timeA - timeB;
     });
+  }
+
+  async deleteAttempt(userId: string): Promise<void> {
+    const snapshot = await db.ref('attempts').orderByChild('userId').equalTo(userId).once('value');
+    const attempts = snapshot.val();
+    if (attempts) {
+      const attemptId = Object.keys(attempts)[0];
+      await db.ref(`attempts/${attemptId}`).remove();
+    }
   }
 }
 

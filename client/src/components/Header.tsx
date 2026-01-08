@@ -20,7 +20,7 @@ export function Header() {
             Q
           </div>
           <span className="font-display font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
-            QuizFlow
+            DSSA-Quizzyy
           </span>
         </Link>
 

@@ -7,8 +7,11 @@ import { api } from "@shared/routes";
 import { QUESTIONS } from "./questions";
 import { auth } from "./firebase";
 
-async function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (process.env.NODE_ENV === "development") {
+async function requireAuth(req: any, res: Response, next: NextFunction) {
+  const idToken = req.headers.authorization?.split('Bearer ')[1];
+  console.log('Received token on server:', idToken);
+
+  if (process.env.NODE_ENV === "development" && !idToken) {
     req.user = {
       uid: "local-dev-user",
       email: "dev@example.com",
@@ -17,14 +20,13 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
     } as any;
     return next();
   }
-
-  const idToken = req.headers.authorization?.split('Bearer ')[1];
   if (!idToken) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
   try {
     const decodedToken = await auth.verifyIdToken(idToken);
+    console.log('Decoded token on server:', decodedToken);
     req.user = decodedToken;
     next();
   } catch (error) {
@@ -169,6 +171,15 @@ export async function registerRoutes(
     );
 
     res.json(finishedAttempt);
+  });
+
+  // ------------------------
+  // RESTART QUIZ
+  // ------------------------
+  app.post(api.quiz.restart.path, requireAuth, async (req: any, res) => {
+    const userId = req.user!.uid;
+    await storage.deleteAttempt(userId);
+    res.json({ success: true });
   });
 
   // ------------------------

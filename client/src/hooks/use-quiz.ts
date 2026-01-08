@@ -109,6 +109,37 @@ export function useFinishQuiz() {
   });
 }
 
+export function useRestartQuiz() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async () => {
+      const headers = await getHeaders();
+      const res = await fetch(api.quiz.restart.path, {
+        method: api.quiz.restart.method,
+        headers,
+      });
+      if (!res.ok) throw new Error("Failed to restart quiz");
+      return api.quiz.restart.responses[200].parse(await res.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.quiz.status.path] });
+      toast({
+        title: "Quiz Restarted",
+        description: "Your previous attempt has been deleted.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error restarting quiz",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useLeaderboard() {
   return useQuery({
     queryKey: [api.leaderboard.list.path],

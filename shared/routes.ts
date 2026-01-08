@@ -55,7 +55,7 @@ export const api = {
       path: '/api/quiz/start',
       responses: {
         201: z.object({
-          attemptId: z.number(),
+          attemptId: z.string(),
           questions: z.array(z.object({
             id: z.string(),
             type: z.enum(["MCQ_SINGLE", "MCQ_MULTI", "TRUE_FALSE", "CODE"]),
@@ -90,6 +90,15 @@ export const api = {
         200: z.custom<Attempt>(),
         400: errorSchemas.validation,
         401: errorSchemas.unauthorized,
+      },
+    },
+    restart: {
+      method: 'POST' as const,
+      path: '/api/quiz/restart',
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        401: errorSchemas.unauthorized,
+        404: errorSchemas.notFound,
       },
     },
   },

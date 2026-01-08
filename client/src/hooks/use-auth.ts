@@ -22,6 +22,11 @@ export function useAuth() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('Auth state changed:', user);
+      if (user) {
+        const token = await user.getIdToken();
+        console.log('Firebase ID Token:', token);
+      }
       setFirebaseUser(user);
       if (user) {
         queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
