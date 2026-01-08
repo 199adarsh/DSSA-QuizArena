@@ -1,94 +1,130 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
-import { setupAuth } from "./replit_integrations/auth";
+import type { Express, Response, NextFunction } from "express";
+import { DecodedIdToken } from "firebase-admin/auth";
+import { type Server } from "http";
+import { Request } from "./types";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
-import { z } from "zod";
 import { QUESTIONS } from "./questions";
-import { Attempt } from "@shared/schema";
+import { auth } from "./firebase";
 
-// Helper to check auth
-function requireAuth(req: any, res: any, next: any) {
-  if (req.isAuthenticated()) {
+async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (process.env.NODE_ENV === "development") {
+    req.user = {
+      uid: "local-dev-user",
+      email: "dev@example.com",
+      name: "Dev User",
+      picture: "https://www.gravatar.com/avatar/",
+    } as any;
     return next();
   }
-  res.status(401).json({ message: "Unauthorized" });
+
+  const idToken = req.headers.authorization?.split('Bearer ')[1];
+  if (!idToken) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+    req.user = decodedToken;
+    next();
+  } catch (error) {
+    res.status(401).json({ message: "Unauthorized" });
+  }
 }
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Setup Replit Auth
-  await setupAuth(app);
-
-  // Auth User Endpoint (from shared routes definition)
-  app.get(api.auth.user.path, requireAuth, async (req, res) => {
-    const user = await storage.getUser((req.user as any).claims.sub);
+  // ------------------------
+  // AUTH USER
+  // ------------------------
+  app.get(api.auth.user.path, requireAuth, async (req: any, res) => {
+    const user = await storage.upsertUser(req.user!);
     res.json(user);
   });
 
-  // Quiz Status
-  app.get(api.quiz.status.path, requireAuth, async (req, res) => {
-    const userId = (req.user as any).claims.sub;
+  // ------------------------
+  // QUIZ STATUS
+  // ------------------------
+  app.get(api.quiz.status.path, requireAuth, async (req: any, res) => {
+    const userId = req.user!.uid;
     const attempt = await storage.getAttempt(userId);
 
     const activeAttempt = attempt?.status === "IN_PROGRESS" ? attempt : undefined;
-    const completedAttempt = attempt?.status === "COMPLETED" || attempt?.status === "TIMEOUT" ? attempt : undefined;
-    const canAttempt = !attempt; // Single attempt only
+
+    const completedAttempt =
+      attempt?.status === "COMPLETED" || attempt?.status === "TIMEOUT"
+        ? attempt
+        : undefined;
 
     res.json({
-      canAttempt,
+      canAttempt: !attempt,
       activeAttempt,
-      completedAttempt
+      completedAttempt,
     });
   });
 
-  // Start Quiz
-  app.post(api.quiz.start.path, requireAuth, async (req, res) => {
-    const userId = (req.user as any).claims.sub;
+  // ------------------------
+  // START QUIZ
+  // ------------------------
+  app.post(api.quiz.start.path, requireAuth, async (req: any, res) => {
+    const userId = req.user!.uid;
     const existingAttempt = await storage.getAttempt(userId);
 
     if (existingAttempt) {
       if (existingAttempt.status === "IN_PROGRESS") {
-        // Resume
         return res.status(201).json({
           attemptId: existingAttempt.id,
           questions: QUESTIONS.map(({ correctAnswer, explanation, ...q }) => q),
-          startTime: existingAttempt.startedAt.toISOString()
+          startTime: existingAttempt.startedAt,
         });
       }
-      return res.status(400).json({ message: "You have already attempted the quiz." });
+
+      return res
+        .status(400)
+        .json({ message: "You have already attempted the quiz." });
     }
 
     const attempt = await storage.createAttempt(userId);
+
     res.status(201).json({
       attemptId: attempt.id,
       questions: QUESTIONS.map(({ correctAnswer, explanation, ...q }) => q),
-      startTime: attempt.startedAt.toISOString()
+      startTime: attempt.startedAt,
     });
   });
 
-  // Submit Answer (Incremental)
-  app.post(api.quiz.submitAnswer.path, requireAuth, async (req, res) => {
-    const userId = (req.user as any).claims.sub;
+  // ------------------------
+  // SUBMIT ANSWER
+  // ------------------------
+  app.post(api.quiz.submitAnswer.path, requireAuth, async (req: any, res) => {
+    const userId = req.user!.uid;
     const { questionId, answer } = api.quiz.submitAnswer.input.parse(req.body);
-    
+
     const attempt = await storage.getAttempt(userId);
     if (!attempt || attempt.status !== "IN_PROGRESS") {
       return res.status(400).json({ message: "No active attempt found." });
     }
 
     const currentAnswers = (attempt.answers as Record<string, any>) || {};
-    const updatedAnswers = { ...currentAnswers, [questionId]: answer };
+    const updatedAnswers = {
+      ...currentAnswers,
+      [questionId]: answer,
+    };
 
-    await storage.updateAttempt(attempt.id, { answers: updatedAnswers });
+    await storage.updateAttempt(attempt.id, {
+      answers: updatedAnswers,
+    });
+
     res.json({ success: true });
   });
 
-  // Finish Quiz
-  app.post(api.quiz.finish.path, requireAuth, async (req, res) => {
-    const userId = (req.user as any).claims.sub;
+  // ------------------------
+  // FINISH QUIZ
+  // ------------------------
+  app.post(api.quiz.finish.path, requireAuth, async (req: any, res) => {
+    const userId = req.user!.uid;
     const attempt = await storage.getAttempt(userId);
 
     if (!attempt || attempt.status !== "IN_PROGRESS") {
@@ -97,23 +133,20 @@ export async function registerRoutes(
 
     const answers = (attempt.answers as Record<string, any>) || {};
     let score = 0;
-    
-    // Calculate Score
-    QUESTIONS.forEach(q => {
+
+    QUESTIONS.forEach((q) => {
       const userAnswer = answers[q.id];
       if (!userAnswer) return;
 
       if (q.type === "MCQ_MULTI") {
-         // Array comparison
-         if (Array.isArray(userAnswer) && Array.isArray(q.correctAnswer)) {
-            const sortedUser = [...userAnswer].sort();
-            const sortedCorrect = [...(q.correctAnswer as string[])].sort();
-            if (JSON.stringify(sortedUser) === JSON.stringify(sortedCorrect)) {
-              score += 10;
-            }
-         }
+        if (Array.isArray(userAnswer) && Array.isArray(q.correctAnswer)) {
+          const sortedUser = [...userAnswer].sort();
+          const sortedCorrect = [...q.correctAnswer].sort();
+          if (JSON.stringify(sortedUser) === JSON.stringify(sortedCorrect)) {
+            score += 10;
+          }
+        }
       } else {
-        // String comparison
         if (userAnswer === q.correctAnswer) {
           score += 10;
         }
@@ -121,25 +154,40 @@ export async function registerRoutes(
     });
 
     const accuracy = Math.round((score / (QUESTIONS.length * 10)) * 100);
+
     const endTime = new Date();
     const startTime = new Date(attempt.startedAt);
-    const timeTakenSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
+    const timeTakenSeconds = Math.floor(
+      (endTime.getTime() - startTime.getTime()) / 1000
+    );
 
-    const finishedAttempt = await storage.finishAttempt(attempt.id, score, accuracy, timeTakenSeconds);
+    const finishedAttempt = await storage.finishAttempt(
+      attempt.id,
+      score,
+      accuracy,
+      timeTakenSeconds
+    );
+
     res.json(finishedAttempt);
   });
 
-  // Leaderboard
-  app.get(api.leaderboard.list.path, async (req, res) => {
+  // ------------------------
+  // LEADERBOARD
+  // ------------------------
+  app.get(api.leaderboard.list.path, async (_req, res) => {
     const entries = await storage.getLeaderboard();
-    
+
     const leaderboard = entries.map((e, index) => ({
       rank: index + 1,
-      username: e.user.firstName ? `${e.user.firstName} ${e.user.lastName || ''}`.trim() : (e.user.username || 'Anonymous'),
+      username: e.user.firstName
+        ? `${e.user.firstName} ${e.user.lastName || ""}`.trim()
+        : e.user.email || "Anonymous",
       score: e.score || 0,
       accuracy: e.accuracy || 0,
-      timeTaken: `${Math.floor((e.timeTakenSeconds || 0) / 60)}m ${(e.timeTakenSeconds || 0) % 60}s`,
-      profileImageUrl: e.user.profileImageUrl
+      timeTaken: `${Math.floor((e.timeTakenSeconds || 0) / 60)}m ${
+        (e.timeTakenSeconds || 0) % 60
+      }s`,
+      profileImageUrl: e.user.profileImageUrl,
     }));
 
     res.json(leaderboard);

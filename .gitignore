@@ -4,3 +4,5 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+firebase.json
+techguess-pro-dssa-firebase-adminsdk-fbsvc-a8430ebcd0.json

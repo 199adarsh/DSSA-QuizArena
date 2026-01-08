@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { Layout } from "@/components/Layout";
 
 export default function Home() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, login } = useAuth();
   const { data: status, isLoading: statusLoading } = useQuizStatus();
   const startQuiz = useStartQuiz();
   const [, setLocation] = useLocation();
@@ -40,14 +40,14 @@ export default function Home() {
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-10 font-light">
               Compete in real-time engineering challenges. Climb the leaderboard. Prove your skills.
             </p>
-            <motion.a
+            <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              href="/api/login"
+              onClick={() => login()}
               className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-black font-bold text-lg shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all"
             >
               Start Challenge <ArrowRight className="w-5 h-5" />
-            </motion.a>
+            </motion.button>
           </motion.div>
         </div>
       </Layout>

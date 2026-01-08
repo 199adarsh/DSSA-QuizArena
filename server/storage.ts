@@ -1,89 +1,119 @@
-import { users, attempts, type User, type InsertUser, type Attempt, type InsertAttempt } from "@shared/schema";
-import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { db } from './db';
+import { User, Attempt, InsertAttempt } from '@shared/schema';
+
+import { DecodedIdToken } from 'firebase-admin/auth';
 
 export interface IStorage {
-  // User (from auth, but exposed here if needed)
+  upsertUser(decodedToken: DecodedIdToken): Promise<User>;
   getUser(id: string): Promise<User | undefined>;
-  
-  // Quiz
   getAttempt(userId: string): Promise<Attempt | undefined>;
   createAttempt(userId: string): Promise<Attempt>;
-  updateAttempt(id: number, updates: Partial<InsertAttempt>): Promise<Attempt>;
-  finishAttempt(id: number, score: number, accuracy: number, timeTakenSeconds: number): Promise<Attempt>;
-  
-  // Leaderboard
+  updateAttempt(attemptId: string, updates: Partial<InsertAttempt>): Promise<Attempt>;
+  finishAttempt(attemptId: string, score: number, accuracy: number, timeTakenSeconds: number): Promise<Attempt>;
   getLeaderboard(): Promise<(Attempt & { user: User })[]>;
 }
 
-export class DatabaseStorage implements IStorage {
+export class FirebaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const snapshot = await db.ref(`users/${id}`).once('value');
+    return snapshot.val();
+  }
+
+  async upsertUser(decodedToken: DecodedIdToken): Promise<User> {
+    const userRef = db.ref(`users/${decodedToken.uid}`);
+    const snapshot = await userRef.once('value');
+    let user = snapshot.val();
+
+    if (!user) {
+      const newUser: User = {
+        id: decodedToken.uid,
+        email: decodedToken.email,
+        firstName: decodedToken.name?.split(' ')[0],
+        profileImageUrl: decodedToken.picture,
+        createdAt: new Date().toISOString(),
+      };
+      await userRef.set(newUser);
+      user = newUser;
+    }
+
     return user;
   }
 
   async getAttempt(userId: string): Promise<Attempt | undefined> {
-    // Get the most recent attempt or the active one
-    const [attempt] = await db
-      .select()
-      .from(attempts)
-      .where(eq(attempts.userId, userId))
-      .orderBy(desc(attempts.startedAt))
-      .limit(1);
-    return attempt;
+    const snapshot = await db.ref('attempts').orderByChild('userId').equalTo(userId).limitToLast(1).once('value');
+    const attempts = snapshot.val();
+    if (!attempts) return undefined;
+    const attemptId = Object.keys(attempts)[0];
+    return { ...attempts[attemptId], id: attemptId };
   }
 
   async createAttempt(userId: string): Promise<Attempt> {
-    const [attempt] = await db
-      .insert(attempts)
-      .values({
-        userId,
-        status: "IN_PROGRESS",
-        startedAt: new Date(),
-      })
-      .returning();
-    return attempt;
+    const newAttemptRef = db.ref('attempts').push();
+    const attemptData: Attempt = {
+      userId,
+      status: 'IN_PROGRESS',
+      startedAt: new Date().toISOString(),
+      id: newAttemptRef.key!,
+      score: 0,
+      accuracy: 0,
+      timeTakenSeconds: 0,
+      answers: {}
+    };
+    await newAttemptRef.set(attemptData);
+    return attemptData;
   }
 
-  async updateAttempt(id: number, updates: Partial<InsertAttempt>): Promise<Attempt> {
-    const [attempt] = await db
-      .update(attempts)
-      .set(updates)
-      .where(eq(attempts.id, id))
-      .returning();
-    return attempt;
+  async updateAttempt(attemptId: string, updates: Partial<InsertAttempt>): Promise<Attempt> {
+    const attemptRef = db.ref(`attempts/${attemptId}`);
+    await attemptRef.update(updates);
+    const snapshot = await attemptRef.once('value');
+    return { ...snapshot.val(), id: attemptId };
   }
 
-  async finishAttempt(id: number, score: number, accuracy: number, timeTakenSeconds: number): Promise<Attempt> {
-    const [attempt] = await db
-      .update(attempts)
-      .set({
-        status: "COMPLETED",
-        completedAt: new Date(),
-        score,
-        accuracy,
-        timeTakenSeconds
-      })
-      .where(eq(attempts.id, id))
-      .returning();
-    return attempt;
+  async finishAttempt(attemptId: string, score: number, accuracy: number, timeTakenSeconds: number): Promise<Attempt> {
+    const attemptRef = db.ref(`attempts/${attemptId}`);
+    const updates = {
+      status: 'COMPLETED',
+      completedAt: new Date().toISOString(),
+      score,
+      accuracy,
+      timeTakenSeconds
+    };
+    await attemptRef.update(updates);
+    const snapshot = await attemptRef.once('value');
+    return { ...snapshot.val(), id: attemptId };
   }
 
   async getLeaderboard(): Promise<(Attempt & { user: User })[]> {
-    // Join attempts with users
-    const results = await db
-      .select({
-        attempt: attempts,
-        user: users,
-      })
-      .from(attempts)
-      .innerJoin(users, eq(attempts.userId, users.id))
-      .where(eq(attempts.status, "COMPLETED"))
-      .orderBy(desc(attempts.score), desc(attempts.accuracy), eq(attempts.timeTakenSeconds, 0) ? desc(attempts.timeTakenSeconds) : desc(attempts.timeTakenSeconds)) // Tie-breakers
-      .limit(50);
+    const attemptsSnapshot = await db.ref('attempts').orderByChild('score').limitToLast(50).once('value');
+    const attempts = attemptsSnapshot.val() || {};
+    const leaderboard: (Attempt & { user: User })[] = [];
 
-    return results.map(r => ({ ...r.attempt, user: r.user }));
+    for (const attemptId in attempts) {
+      const attempt = attempts[attemptId];
+      if (attempt.status === 'COMPLETED') {
+        const user = await this.getUser(attempt.userId);
+        if (user) {
+          leaderboard.push({ ...attempt, id: attemptId, user });
+        }
+      }
+    }
+
+    return leaderboard.sort((a, b) => {
+      const scoreA = a.score || 0;
+      const scoreB = b.score || 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
+      const accuracyA = a.accuracy || 0;
+      const accuracyB = b.accuracy || 0;
+      if (accuracyB !== accuracyA) return accuracyB - accuracyA;
+
+      const timeA = a.timeTakenSeconds || 0;
+      const timeB = b.timeTakenSeconds || 0;
+      return timeA - timeB;
+    });
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new FirebaseStorage();
+

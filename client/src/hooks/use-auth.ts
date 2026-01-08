@@ -1,46 +1,64 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { User } from "@shared/models/auth";
+import { useState, useEffect } from 'react';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User as FirebaseUser } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { User } from '@shared/models/auth';
 
-async function fetchUser(): Promise<User | null> {
-  const response = await fetch("/api/auth/user", {
-    credentials: "include",
+async function fetchApiUser(token: string): Promise<User | null> {
+  const response = await fetch('/api/auth/user', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
-
-  if (response.status === 401) {
-    return null;
-  }
-
-  if (!response.ok) {
-    throw new Error(`${response.status}: ${response.statusText}`);
-  }
-
+  if (response.status === 401) return null;
+  if (!response.ok) throw new Error('Failed to fetch user');
   return response.json();
-}
-
-async function logout(): Promise<void> {
-  window.location.href = "/api/logout";
 }
 
 export function useAuth() {
   const queryClient = useQueryClient();
-  const { data: user, isLoading } = useQuery<User | null>({
-    queryKey: ["/api/auth/user"],
-    queryFn: fetchUser,
-    retry: false,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setFirebaseUser(user);
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      }
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, [queryClient]);
+
+  const { data: user } = useQuery<User | null>({
+    queryKey: ['/api/auth/user', firebaseUser?.uid],
+    queryFn: async () => {
+      if (!firebaseUser) return null;
+      const token = await firebaseUser.getIdToken();
+      return fetchApiUser(token);
+    },
+    enabled: !!firebaseUser,
   });
 
+  const login = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
   const logoutMutation = useMutation({
-    mutationFn: logout,
+    mutationFn: () => signOut(auth),
     onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.setQueryData(['/api/auth/user', firebaseUser?.uid], null);
+      setFirebaseUser(null);
     },
   });
 
   return {
     user,
     isLoading,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!firebaseUser,
+    login,
     logout: logoutMutation.mutate,
     isLoggingOut: logoutMutation.isPending,
   };

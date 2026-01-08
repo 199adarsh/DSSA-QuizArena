@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { attempts } from './schema';
+import { Attempt } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -44,8 +44,8 @@ export const api = {
       responses: {
         200: z.object({
           canAttempt: z.boolean(),
-          activeAttempt: z.custom<typeof attempts.$inferSelect>().optional(),
-          completedAttempt: z.custom<typeof attempts.$inferSelect>().optional(),
+          activeAttempt: z.custom<Attempt>().optional(),
+          completedAttempt: z.custom<Attempt>().optional(),
         }),
         401: errorSchemas.unauthorized,
       },
@@ -87,7 +87,7 @@ export const api = {
       method: 'POST' as const,
       path: '/api/quiz/finish',
       responses: {
-        200: z.custom<typeof attempts.$inferSelect>(),
+        200: z.custom<Attempt>(),
         400: errorSchemas.validation,
         401: errorSchemas.unauthorized,
       },
