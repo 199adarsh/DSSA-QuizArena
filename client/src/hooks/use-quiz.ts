@@ -226,7 +226,6 @@ export function useLeaderboard() {
       if (!res.ok) throw new Error("Failed to fetch leaderboard");
       return api.leaderboard.list.responses[200].parse(await res.json());
     },
-    enabled: !!auth.currentUser,
     staleTime: 60 * 1000, // 1 minute
     gcTime: 5 * 60 * 1000, // 5 minutes
   });

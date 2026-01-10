@@ -39,7 +39,7 @@ export function QuestionCard({ question, selectedAnswer, onAnswer, index, total 
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: -20, scale: 0.95 }}
       transition={{ duration: 0.3 }}
-      className="w-full max-w-3xl mx-auto px-4 md:px-0"
+      className="w-full max-w-2xl mx-auto px-4 md:px-0"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -57,8 +57,8 @@ export function QuestionCard({ question, selectedAnswer, onAnswer, index, total 
       </div>
 
       {/* Question Text */}
-      <div className="glass-card p-6 md:p-8 rounded-2xl mb-6 md:mb-8">
-        <h2 className="text-xl md:text-2xl lg:text-3xl font-mona font-bold leading-tight mb-4 md:mb-6">
+      <div className="glass-card p-4 md:p-6 rounded-xl mb-4 md:mb-6">
+        <h2 className="text-lg md:text-xl lg:text-2xl font-mona font-bold leading-tight mb-2 md:mb-4">
           {question.text}
         </h2>
 
@@ -74,7 +74,7 @@ export function QuestionCard({ question, selectedAnswer, onAnswer, index, total 
         )}
 
         {/* Options */}
-        <div className="grid gap-3 md:gap-4">
+        <div className="grid gap-2 md:gap-3">
           {question.options?.map((option, idx) => (
             <motion.button
               key={idx}
@@ -82,15 +82,15 @@ export function QuestionCard({ question, selectedAnswer, onAnswer, index, total 
               whileTap={{ scale: 0.98 }}
               onClick={() => handleOptionClick(option)}
               className={cn(
-                "w-full p-4 md:p-5 text-left rounded-xl border transition-all duration-200 flex items-center justify-between group min-h-[60px] md:min-h-[72px]",
+                "w-full p-3 md:p-4 text-left rounded-lg border transition-all duration-200 flex items-center justify-between group min-h-[50px] md:min-h-[60px]",
                 isSelected(option)
                   ? "bg-primary/10 border-primary shadow-[0_0_15px_rgba(124,58,237,0.3)]"
                   : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
               )}
             >
-              <div className="flex items-center gap-3 md:gap-4">
+              <div className="flex items-center gap-2 md:gap-3">
                 <div className={cn(
-                  "w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center text-sm md:text-base font-bold border transition-colors",
+                  "w-6 h-6 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-sm md:text-base font-bold border transition-colors",
                   isSelected(option)
                     ? "bg-primary text-white border-primary"
                     : "bg-white/5 text-muted-foreground border-white/10 group-hover:border-white/20"
@@ -98,7 +98,7 @@ export function QuestionCard({ question, selectedAnswer, onAnswer, index, total 
                   {String.fromCharCode(65 + idx)}
                 </div>
                 <span className={cn(
-                  "text-base md:text-lg font-medium",
+                  "text-sm md:text-base font-medium",
                   isSelected(option) ? "text-white" : "text-gray-300"
                 )}>
                   {option}
@@ -109,9 +109,9 @@ export function QuestionCard({ question, selectedAnswer, onAnswer, index, total 
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-primary flex items-center justify-center text-white"
+                  className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary flex items-center justify-center text-white"
                 >
-                  <Check className="w-3.5 h-3.5 md:w-4 md:h-4 stroke-[3]" />
+                  <Check className="w-3 h-3 md:w-3.5 md:h-3.5 stroke-[2]" />
                 </motion.div>
               )}
             </motion.button>

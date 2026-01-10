@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
-import { LogOut, LayoutDashboard, Trophy, User, Menu, X } from "lucide-react";
+import { LogOut, LayoutDashboard, Trophy, User, Menu, X, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -10,7 +10,7 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/", label: "Home", icon: Home },
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
 
@@ -34,25 +34,23 @@ export function Header() {
           </button>
 
           {/* Desktop Nav */}
-          {isAuthenticated && (
-            <nav className="hidden md:flex items-center gap-1 rounded-full bg-white/5 p-1">
-              {navItems.map((item) => (
-                <button
-                  key={item.href}
-                  onClick={() => setLocation(item.href)}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2",
-                    location === item.href
-                      ? "bg-white/10 text-white"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  )}
-                >
-                  <item.icon className="w-3.5 h-3.5" />
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-          )}
+          <nav className="hidden md:flex items-center gap-1 rounded-full bg-white/5 p-1">
+            {navItems.map((item) => (
+              <button
+                key={item.href}
+                onClick={() => setLocation(item.href)}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2",
+                  location === item.href
+                    ? "bg-white/10 text-white"
+                    : "text-white/60 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <item.icon className="w-3.5 h-3.5" />
+                {item.label}
+              </button>
+            ))}
+          </nav>
 
           {/* Right Side */}
           <div className="flex items-center gap-2">
@@ -103,7 +101,7 @@ export function Header() {
       </header>
 
       {/* Mobile Menu */}
-      {isAuthenticated && isMobileMenuOpen && (
+      {isMobileMenuOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           {/* Backdrop */}
           <div
@@ -131,16 +129,18 @@ export function Header() {
                 ))}
               </nav>
 
-              <button
-                onClick={() => {
-                  logout();
-                  setIsMobileMenuOpen(false);
-                }}
-                className="w-full mt-6 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/20 text-red-300"
-              >
-                <LogOut className="w-5 h-5" />
-                Sign Out
-              </button>
+              {isAuthenticated && (
+                <button
+                  onClick={() => {
+                    logout();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full mt-6 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/20 text-red-300"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Sign Out
+                </button>
+              )}
             </div>
           </div>
         </div>

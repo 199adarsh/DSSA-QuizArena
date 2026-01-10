@@ -5,10 +5,16 @@ import { motion } from "framer-motion";
 import { Layout } from "@/components/Layout";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useState } from "react";
 
 export default function Leaderboard() {
   const { data: leaderboard, isLoading } = useLeaderboard();
   const { user } = useAuth();
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+
+  const handleImageError = (username: string) => {
+    setImageErrors(prev => new Set(prev).add(username));
+  };
 
   if (isLoading) {
     return (
@@ -20,63 +26,65 @@ export default function Leaderboard() {
     );
   }
 
+  const topThree = leaderboard?.slice(0, 3) || [];
+  const rest = leaderboard?.slice(3) || [];
+
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-mona font-bold mb-4">
+      <div className="max-w-4xl mx-auto px-2 sm:px-4">
+        <div className="text-center mb-8 md:mb-12">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4">
             Global Leaderboard
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm md:text-base text-muted-foreground px-2">
             Top performers ranked by score and speed
           </p>
         </div>
 
-        {/* Top 3 Podium */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 items-end">
-          {leaderboard?.slice(0, 3).map((entry) => (
+        {/* 🥇 Top 3 Podium */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-8 md:mb-12 items-end">
+          {topThree.map((entry) => (
             <div
               key={entry.username}
               className={cn(
-                "glass-card p-6 rounded-2xl flex flex-col items-center relative border-t-4",
+                "glass-card p-3 sm:p-4 md:p-6 rounded-xl md:rounded-2xl flex flex-col items-center relative border-t-4",
                 entry.rank === 1
-                  ? "order-1 md:order-2 h-72 border-yellow-500 bg-yellow-500/5"
+                  ? "order-1 sm:order-1 md:order-2 h-48 sm:h-52 md:h-72 border-yellow-500 bg-yellow-500/5"
                   : entry.rank === 2
-                  ? "order-2 md:order-1 h-64 border-gray-400 bg-gray-400/5"
-                  : "order-3 h-60 border-orange-700 bg-orange-700/5"
+                  ? "order-2 sm:order-2 md:order-1 h-44 sm:h-48 md:h-64 border-gray-400 bg-gray-400/5"
+                  : "order-3 h-40 sm:h-44 md:h-60 border-orange-700 bg-orange-700/5"
               )}
             >
               {entry.rank === 1 && (
-                <Medal className="w-10 h-10 text-yellow-500 absolute -top-5" />
+                <Medal className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 text-yellow-500 absolute -top-3 sm:-top-4 md:-top-5" />
               )}
 
-              <div className="w-16 h-16 rounded-full bg-white/10 mb-4 mt-6 overflow-hidden">
-                {entry.profileImageUrl ? (
+              <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full bg-white/10 mb-2 sm:mb-3 md:mb-4 mt-3 sm:mt-4 md:mt-6 overflow-hidden">
+                {entry.profileImageUrl && !imageErrors.has(entry.username) ? (
                   <img
                     src={entry.profileImageUrl}
                     alt={entry.username}
                     className="w-full h-full object-cover"
+                    onError={() => handleImageError(entry.username)}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center font-bold text-2xl">
+                  <div className="w-full h-full flex items-center justify-center font-bold text-sm sm:text-lg md:text-2xl">
                     {entry.username[0]}
                   </div>
                 )}
               </div>
 
-              <div className="font-bold text-lg mb-1">{entry.username}</div>
-              <div className="text-3xl font-bold text-primary mb-2">
+              <div className="font-bold text-xs sm:text-sm md:text-lg mb-1">{entry.username}</div>
+              <div className="text-lg sm:text-xl md:text-3xl font-bold text-primary mb-1 sm:mb-2">
                 {entry.bestScore} pts
               </div>
-              <div className="text-xs text-muted-foreground mb-4">
-                Total: {entry.totalScore} pts • {entry.attempts} attempts
-              </div>
+           
 
-              <div className="flex items-center gap-4 text-xs text-muted-foreground mt-auto">
+              <div className="flex items-center gap-2 sm:gap-3 md:gap-4 text-xs text-muted-foreground mt-auto">
                 <span className="flex items-center gap-1">
                   <Target className="w-3 h-3" /> {entry.accuracy}%
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="hidden sm:flex items-center gap-1">
                   <Clock className="w-3 h-3" /> {entry.timeTaken}
                 </span>
               </div>
@@ -84,101 +92,96 @@ export default function Leaderboard() {
           ))}
         </div>
 
-        {/* Mobile Cards */}
-        <div className="glass-card rounded-2xl overflow-hidden">
-          <div className="md:hidden space-y-3 p-4">
-            {leaderboard?.map((entry) => (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                key={entry.username}
-                className={cn(
-                  "p-4 rounded-xl border",
-                  user?.firstName === entry.username &&
-                    "border-primary/30 bg-primary/5"
-                )}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center font-bold">
-                      #{entry.rank}
-                    </div>
-                    <div>
-                      <p className="font-medium">{entry.username}</p>
-                      {user?.firstName === entry.username && (
-                        <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-                          YOU
-                        </span>
-                      )}
-                    </div>
+        {/* 📱 Mobile Cards */}
+        <div className="md:hidden space-y-2 sm:space-y-3">
+          {rest.map((entry) => (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              key={entry.username}
+              className={cn(
+                "p-3 sm:p-4 rounded-xl border bg-white/5",
+                user?.firstName === entry.username &&
+                  "border-primary/30 bg-primary/5"
+              )}
+            >
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center font-bold text-xs sm:text-sm">
+                    #{entry.rank}
                   </div>
-
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-primary">
-                      {entry.bestScore}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Total: {entry.totalScore}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Target className="w-4 h-4" /> {entry.accuracy}%
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" /> {entry.timeTaken}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Trophy className="w-4 h-4" /> {entry.attempts}
-                  </div>
-                  <div className="text-right text-xs text-muted-foreground">
-                    {entry.lastAttemptAt &&
-                      format(new Date(entry.lastAttemptAt), "MMM d")}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Desktop Table */}
-          <div className="hidden md:block">
-            <table className="w-full">
-              <thead className="bg-white/5 text-xs uppercase">
-                <tr>
-                  <th className="p-4">Rank</th>
-                  <th className="p-4">User</th>
-                  <th className="p-4 text-right">Best</th>
-                  <th className="p-4 text-right">Total</th>
-                  <th className="p-4 text-right">Attempts</th>
-                  <th className="p-4 text-right">Accuracy</th>
-                  <th className="p-4 text-right">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaderboard?.map((entry) => (
-                  <tr
-                    key={entry.username}
-                    className={cn(
-                      "border-b border-white/5",
-                      user?.firstName === entry.username && "bg-primary/10"
+                  <div>
+                    <p className="font-medium text-sm sm:text-base">{entry.username}</p>
+                    {user?.firstName === entry.username && (
+                      <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                        YOU
+                      </span>
                     )}
-                  >
-                    <td className="p-4">#{entry.rank}</td>
-                    <td className="p-4">{entry.username}</td>
-                    <td className="p-4 text-right text-primary font-bold">
-                      {entry.bestScore}
-                    </td>
-                    <td className="p-4 text-right">{entry.totalScore}</td>
-                    <td className="p-4 text-right">{entry.attempts}</td>
-                    <td className="p-4 text-right">{entry.accuracy}%</td>
-                    <td className="p-4 text-right">{entry.timeTaken}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <p className="text-lg sm:text-2xl font-bold text-primary">
+                    {entry.bestScore}
+                  </p>
+      
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
+                <div className="flex items-center gap-1">
+                  <Target className="w-3 h-3 sm:w-4 sm:h-4" /> {entry.accuracy}%
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3 h-3 sm:w-4 sm:h-4" /> {entry.timeTaken}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Trophy className="w-3 h-3 sm:w-4 sm:h-4" /> {entry.attempts}
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  {entry.lastAttemptAt &&
+                    format(new Date(entry.lastAttemptAt), "MMM d")}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* 🖥 Desktop Table */}
+        <div className="hidden md:block glass-card rounded-2xl overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-white/5 text-xs uppercase">
+              <tr>
+                <th className="p-4">Rank</th>
+                <th className="p-4">User</th>
+                <th className="p-4 text-right">Best</th>
+              
+                <th className="p-4 text-right">Attempts</th>
+                <th className="p-4 text-right">Accuracy</th>
+                <th className="p-4 text-right">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaderboard?.map((entry) => (
+                <tr
+                  key={entry.username}
+                  className={cn(
+                    "border-b border-white/5",
+                    user?.firstName === entry.username && "bg-primary/10"
+                  )}
+                >
+                  <td className="p-4">#{entry.rank}</td>
+                  <td className="p-4">{entry.username}</td>
+                  <td className="p-4 text-right text-primary font-bold">
+                    {entry.bestScore}
+                  </td>
+                  <td className="p-4 text-right">{entry.attempts}</td>
+                  <td className="p-4 text-right">{entry.accuracy}%</td>
+                  <td className="p-4 text-right">{entry.timeTaken}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {(!leaderboard || leaderboard.length === 0) && (

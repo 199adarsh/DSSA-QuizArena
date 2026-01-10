@@ -1,6 +1,5 @@
 import { db } from './db';
 import { User, Attempt, InsertAttempt, LeaderboardEntry, ReattemptLog } from '@shared/schema';
-
 import { DecodedIdToken } from 'firebase-admin/auth';
 
 export interface IStorage {

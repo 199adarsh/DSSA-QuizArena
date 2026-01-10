@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { pgTable, text, timestamp, integer, jsonb, boolean } from "drizzle-orm/pg-core";
 
 export * from "./models/auth";
 
@@ -60,46 +59,6 @@ export interface Attempt {
 }
 
 export type InsertAttempt = z.infer<typeof insertAttemptSchema>;
-
-/* ---------------- DRIZZLE SCHEMA ---------------- */
-
-export const users = pgTable("users", {
-  id: text("id").primaryKey(),
-  email: text("email"),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  profileImageUrl: text("profile_image_url"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  totalAttempts: integer("total_attempts").default(0),
-  bestScore: integer("best_score").default(0),
-  totalScore: integer("total_score").default(0),
-  lastAttemptAt: timestamp("last_attempt_at"),
-  canRetakeAt: timestamp("can_retake_at"),
-});
-
-export const attempts = pgTable("attempts", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
-  startedAt: timestamp("started_at").defaultNow(),
-  answers: jsonb("answers").$type<Record<string, any>>(),
-  currentQuestionIndex: integer("current_question_index").default(0),
-  status: text("status").$type<"IN_PROGRESS" | "COMPLETED" | "TIMEOUT">().default("IN_PROGRESS"),
-  completedAt: timestamp("completed_at"),
-  score: integer("score").default(0),
-  accuracy: integer("accuracy").default(0),
-  timeTakenSeconds: integer("time_taken_seconds").default(0),
-});
-
-export const reattemptLogs = pgTable("reattempt_logs", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
-  timestamp: timestamp("timestamp").defaultNow(),
-  reason: text("reason"),
-  granted: boolean("granted").default(false),
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
-});
 
 /* ---------------- API TYPES ---------------- */
 
