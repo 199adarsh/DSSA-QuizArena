@@ -21,41 +21,41 @@ export function AntiCheatGuard({ children, isActive }: AntiCheatGuardProps) {
   const { mutate: finishQuiz } = useFinishQuiz();
   const violations = useRef(0);
   const [showWarning, setShowWarning] = useState(false);
+  const locked = useRef(false);
 
   useEffect(() => {
     if (!isActive) return;
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        handleViolation();
-      }
-    };
-
-    const handleBlur = () => {
-      handleViolation();
-    };
-
     const handleViolation = () => {
+      if (locked.current) return;
+
       violations.current += 1;
 
       if (violations.current < 3) {
         setShowWarning(true);
         toast({
           title: "Focus Warning ⚠️",
-          description: `You left the quiz tab! This is warning ${violations.current}/3.`,
+          description: `You left the quiz tab. Warning ${violations.current}/3.`,
           variant: "destructive",
-          duration: 5000,
+          duration: 4000,
         });
       } else {
+        locked.current = true;
         toast({
-          title: "Quiz Terminated 🚫",
-          description: "Multiple violations detected. Submitting your quiz now.",
+          title: "Quiz Terminated",
+          description: "Multiple violations detected. Submitting your quiz.",
           variant: "destructive",
-          duration: 10000,
+          duration: 8000,
         });
         finishQuiz();
       }
     };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) handleViolation();
+    };
+
+    const handleBlur = () => handleViolation();
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleBlur);
@@ -70,23 +70,25 @@ export function AntiCheatGuard({ children, isActive }: AntiCheatGuardProps) {
     <>
       {children}
       <AlertDialog open={showWarning} onOpenChange={setShowWarning}>
-        <AlertDialogContent className="glass-card border-destructive/50">
+        <AlertDialogContent className="border-destructive/50">
           <AlertDialogHeader>
             <div className="mx-auto w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center mb-4">
               <AlertTriangle className="w-6 h-6 text-destructive" />
             </div>
-            <AlertDialogTitle className="text-center text-xl">Focus Warning</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-muted-foreground">
-              Leaving the tab or window is not allowed during the quiz.
+            <AlertDialogTitle className="text-center text-xl">
+              Focus Warning
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              Leaving the quiz tab is not allowed.
               <br />
-              <strong className="text-white mt-2 block">
+              <strong className="block mt-2">
                 Warning {violations.current} of 3
               </strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogAction 
+          <AlertDialogAction
             onClick={() => setShowWarning(false)}
-            className="w-full bg-destructive hover:bg-destructive/90 text-white"
+            className="w-full"
           >
             I Understand
           </AlertDialogAction>

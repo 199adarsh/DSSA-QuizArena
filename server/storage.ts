@@ -16,6 +16,8 @@ export interface IStorage {
   updateUserStats(userId: string, stats: Partial<User>): Promise<void>;
   logReattempt(userId: string, granted: boolean, reason?: string, ipAddress?: string, userAgent?: string): Promise<void>;
   getReattemptLogs(userId?: string): Promise<ReattemptLog[]>;
+  saveProgress(userId: string, questionIndex: number, answers: Record<string, any>): Promise<void>;
+  restoreProgress(userId: string): Promise<Attempt | undefined>;
 }
 
 export class FirebaseStorage implements IStorage {
@@ -210,6 +212,29 @@ export class FirebaseStorage implements IStorage {
       userAgent
     };
     await reattemptRef.set(logEntry);
+  }
+
+  async saveProgress(userId: string, questionIndex: number, answers: Record<string, any>): Promise<void> {
+    const attempt = await this.getAttempt(userId);
+    if (!attempt || attempt.status !== "IN_PROGRESS") {
+      throw new Error("No active quiz in progress");
+    }
+    
+    await this.updateAttempt(attempt.id, {
+      currentQuestionIndex: questionIndex,
+      answers
+    });
+    console.log(`Saved progress for user ${userId}: question ${questionIndex}, ${Object.keys(answers).length} answers`);
+  }
+
+  async restoreProgress(userId: string): Promise<Attempt | undefined> {
+    const attempt = await this.getAttempt(userId);
+    if (!attempt || attempt.status !== "IN_PROGRESS") {
+      throw new Error("No active quiz to restore");
+    }
+    
+    console.log(`Restored progress for user ${userId}: question ${attempt.currentQuestionIndex || 0}, ${Object.keys(attempt.answers || {}).length} answers`);
+    return attempt;
   }
 
   async getReattemptLogs(userId?: string): Promise<ReattemptLog[]> {

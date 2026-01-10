@@ -1,13 +1,13 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { LogOut, LayoutDashboard, Trophy, User } from "lucide-react";
+import { LogOut, LayoutDashboard, Trophy, User, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-
+import { useState } from "react";
 
 export function Header() {
-  const { user, login, logout } = useAuth();
+  const { user, login, logout, isAuthenticated } = useAuth();
   const [location] = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -15,24 +15,22 @@ export function Header() {
   ];
 
   return (
-    <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
-      <div className="mx-auto px-4">
-      <div className="flex h-14 max-w-5xl items-center justify-between gap-10 rounded-full border border-white/20 bg-white/5 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] px-10">
-
-          
+    <>
+      <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-5xl px-4">
+        <div className="flex h-14 items-center justify-between rounded-full border border-white/20 bg-white/5 backdrop-blur-2xl shadow-lg px-6">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group cursor-pointer">
-            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white font-semibold shadow-inner ring-1 ring-white/10">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold">
               Q
             </div>
-            <span className="font-display font-semibold text-sm tracking-tight text-white/90">
-              DSSA QUIZ ARENA              
+            <span className="text-sm font-semibold text-white/90">
+              DSSA QUIZ
             </span>
           </Link>
 
-          {/* Nav */}
-          {user && (
-            <nav className="hidden md:flex items-center gap-1 rounded-full bg-white/5 p-1 ring-1 ring-white/10">
+          {/* Desktop Nav */}
+          {isAuthenticated && (
+            <nav className="hidden md:flex items-center gap-1 rounded-full bg-white/5 p-1">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
@@ -40,7 +38,7 @@ export function Header() {
                   className={cn(
                     "px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2",
                     location === item.href
-                      ? "bg-white/10 text-white shadow-sm"
+                      ? "bg-white/10 text-white"
                       : "text-white/60 hover:text-white hover:bg-white/5"
                   )}
                 >
@@ -52,45 +50,89 @@ export function Header() {
           )}
 
           {/* Right */}
-          <div className="flex items-center gap-3">
-            {user ? (
+          <div className="flex items-center gap-2">
+            {isAuthenticated ? (
               <>
-                <div className="flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 ring-1 ring-white/10">
-                  {user.profileImageUrl ? (
-                    <img 
-                      src={user.profileImageUrl} 
-                      alt={user.firstName || "User"} 
-                      className="w-6 h-6 rounded-full ring-1 ring-white/20"
+                <div className="hidden sm:flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5">
+                  {user?.profileImageUrl ? (
+                    <img
+                      src={user.profileImageUrl}
+                      className="w-6 h-6 rounded-full"
                     />
                   ) : (
-                    <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white ring-1 ring-white/20">
-                      <User className="w-3 h-3" />
-                    </div>
+                    <User className="w-4 h-4" />
                   )}
-                  <p className="text-xs font-medium text-white/90 hidden sm:block">
-                    {user.firstName}
-                  </p>
+                  <span className="text-xs">{user?.firstName}</span>
                 </div>
 
                 <button
+                  onClick={() => setIsMobileMenuOpen((p) => !p)}
+                  className="md:hidden p-2 rounded-full hover:bg-white/10"
+                >
+                  {isMobileMenuOpen ? (
+                    <X className="w-5 h-5" />
+                  ) : (
+                    <Menu className="w-5 h-5" />
+                  )}
+                </button>
+
+                <button
                   onClick={() => logout()}
-                  className="p-2 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition"
-                  title="Sign out"
+                  className="hidden md:flex p-2 rounded-full hover:bg-white/10"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
               </>
             ) : (
               <button
-                onClick={() => login()}
-                className="rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-black hover:bg-white transition shadow"
+                onClick={login}
+                className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black"
               >
                 Sign in
               </button>
             )}
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Mobile Menu */}
+      {isAuthenticated && isMobileMenuOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm">
+            <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-2xl p-4">
+              <nav className="space-y-2">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10"
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+
+              <button
+                onClick={() => {
+                  logout();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full mt-6 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/20 text-red-300"
+              >
+                <LogOut className="w-5 h-5" />
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -101,6 +101,34 @@ export const api = {
         }),
       },
     },
+    saveProgress: {
+      method: 'POST' as const,
+      path: '/api/quiz/save-progress',
+      input: z.object({
+        questionIndex: z.number(),
+        answers: z.record(z.string()),
+      }),
+      responses: {
+        200: z.object({
+          success: z.boolean(),
+        }),
+        401: errorSchemas.validation,
+      },
+    },
+    restoreProgress: {
+      method: 'POST' as const,
+      path: '/api/quiz/restore-progress',
+      responses: {
+        200: z.object({
+          success: z.boolean(),
+          attemptId: z.string(),
+          currentQuestionIndex: z.number(),
+          answers: z.record(z.string()),
+          startTime: z.string(),
+        }),
+        401: errorSchemas.validation,
+      },
+    },
     reattempt: {
       method: 'POST' as const,
       path: '/api/quiz/reattempt',

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export * from "./models/auth";
 
-// Quiz Configuration Types (stored in JSON/Code, not DB, but types are shared)
+// Quiz Configuration Types
 export type QuestionType = "MCQ_SINGLE" | "MCQ_MULTI" | "TRUE_FALSE" | "CODE";
 
 export interface User {
@@ -13,12 +13,11 @@ export interface User {
   profileImageUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
-  // Quiz statistics
   totalAttempts?: number;
   bestScore?: number;
   totalScore?: number;
   lastAttemptAt?: string;
-  canRetakeAt?: string; // When user can retake the quiz
+  canRetakeAt?: string;
 }
 
 export interface Question {
@@ -26,43 +25,53 @@ export interface Question {
   type: QuestionType;
   text: string;
   options?: string[];
-  correctAnswer: string | string[]; // string for SINGLE/TF, array for MULTI
+  correctAnswer: string | string[];
   difficulty: "EASY" | "MEDIUM" | "HARD";
   explanation?: string;
   codeSnippet?: string;
 }
 
-// Schemas
+/* ---------------- ATTEMPT SCHEMA ---------------- */
+
 export const insertAttemptSchema = z.object({
   userId: z.string(),
   answers: z.record(z.any()).optional(),
+  currentQuestionIndex: z.number().optional(),   // ✅ FIX
+  status: z.enum(["IN_PROGRESS", "COMPLETED", "TIMEOUT"]).optional(),
+  startedAt: z.string().optional(),
+  completedAt: z.string().optional(),
+  score: z.number().optional(),
+  accuracy: z.number().optional(),
+  timeTakenSeconds: z.number().optional(),
 });
 
-// Types
 export interface Attempt {
   id: string;
   userId: string;
   startedAt: string;
+  answers?: Record<string, any>;
+  currentQuestionIndex?: number;                 // ✅ FIX
+  status: "IN_PROGRESS" | "COMPLETED" | "TIMEOUT";
   completedAt?: string;
   score?: number;
   accuracy?: number;
   timeTakenSeconds?: number;
-  answers?: Record<string, any>;
-  status: "IN_PROGRESS" | "COMPLETED" | "TIMEOUT";
 }
+
 export type InsertAttempt = z.infer<typeof insertAttemptSchema>;
 
-// API Types
+/* ---------------- API TYPES ---------------- */
+
 export interface QuizStatusResponse {
   canAttempt: boolean;
   activeAttempt?: Attempt;
   completedAttempt?: Attempt;
-  nextRetakeAt?: string; // When user can retake the quiz
+  nextRetakeAt?: string;
 }
 
 export interface StartQuizResponse {
   attemptId: string;
-  questions: Omit<Question, "correctAnswer" | "explanation">[]; // Sanitize for frontend
+  questions: Omit<Question, "correctAnswer" | "explanation">[];
   startTime: string;
 }
 
@@ -89,7 +98,7 @@ export interface LeaderboardEntry {
   totalScore: number;
   attempts: number;
   accuracy: number;
-  timeTaken: string; // formatted string or seconds
+  timeTaken: string;
   profileImageUrl?: string;
   lastAttemptAt?: string;
 }

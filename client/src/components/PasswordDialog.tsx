@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +32,9 @@ export function PasswordDialog({ isOpen, onClose, onConfirm }: PasswordDialogPro
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Enter Password to Restart Quiz</DialogTitle>
+          <DialogDescription>
+            Enter the admin password to restart your current quiz attempt.
+          </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           <Input

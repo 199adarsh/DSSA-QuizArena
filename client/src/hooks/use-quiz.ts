@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +11,69 @@ async function getHeaders(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${token}` };
 }
 
-export { getHeaders };
+export function useSaveProgress() {
+  return useMutation({
+    mutationFn: async ({ questionIndex, answers }: { questionIndex: number; answers: Record<string, any> }) => {
+      const headers = await getHeaders();
+      const res = await fetch(api.quiz.saveProgress.path, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ questionIndex, answers }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to save progress");
+      }
+
+      return await res.json();
+    },
+    onSuccess: () => {
+      console.log('Progress saved successfully');
+    },
+    onError: (error) => {
+      console.error('Save progress error:', error);
+    },
+  });
+}
+
+export function useRestoreProgress() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      const headers = await getHeaders();
+      const res = await fetch(api.quiz.restoreProgress.path, {
+        method: "POST",
+        headers,
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to restore progress");
+      }
+
+      const result = await res.json();
+      
+      // Update the active quiz data in cache with full data
+      queryClient.setQueryData(["active-quiz"], {
+        attemptId: result.attemptId,
+        questions: result.questions,
+        startTime: result.startTime,
+        currentQuestionIndex: result.currentQuestionIndex,
+        answers: result.answers
+      });
+      
+      return result;
+    },
+    onSuccess: (data) => {
+      console.log('Progress restored successfully');
+    },
+    onError: (error) => {
+      console.error('Restore progress error:', error);
+    },
+  });
+}
 
 export function useQuizStatus() {
   return useQuery({
@@ -33,6 +95,8 @@ export function useQuizStatus() {
       return data; // Return the full response including nextRetakeAt
     },
     enabled: !!auth.currentUser,
+    staleTime: 5 * 1000, // 5 seconds for faster UI updates
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
@@ -57,9 +121,7 @@ export function useStartQuiz() {
       return api.quiz.start.responses[201].parse(await res.json());
     },
     onSuccess: (data) => {
-      // Invalidate status so dashboard updates
-      queryClient.invalidateQueries({ queryKey: [api.quiz.status.path] });
-      // We might want to cache the active quiz data too
+      // Set active quiz data without invalidating status
       queryClient.setQueryData(["active-quiz"], data);
     },
     onError: (error) => {
@@ -112,8 +174,9 @@ export function useFinishQuiz() {
       return api.quiz.finish.responses[200].parse(await res.json());
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.quiz.status.path] });
+      // Remove active quiz and set new status
       queryClient.removeQueries({ queryKey: ["active-quiz"] });
+      queryClient.invalidateQueries({ queryKey: [api.quiz.status.path] });
       toast({
         title: "Quiz Completed",
         description: "Your results have been submitted.",
@@ -137,6 +200,7 @@ export function useRestartQuiz() {
       return api.quiz.restart.responses[200].parse(await res.json());
     },
     onSuccess: () => {
+      // Only invalidate status, don't clear everything
       queryClient.invalidateQueries({ queryKey: [api.quiz.status.path] });
       toast({
         title: "Quiz Restarted",
@@ -163,5 +227,9 @@ export function useLeaderboard() {
       return api.leaderboard.list.responses[200].parse(await res.json());
     },
     enabled: !!auth.currentUser,
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
+
+export { getHeaders };

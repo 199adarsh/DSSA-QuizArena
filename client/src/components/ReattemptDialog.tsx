@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Lock, Key, AlertCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,10 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Alert,
-  AlertDescription,
-} from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { api } from "@shared/routes";
 import { getHeaders } from "@/hooks/use-quiz";
 import { useToast } from "@/hooks/use-toast";
@@ -26,41 +23,60 @@ interface ReattemptDialogProps {
   onSuccess?: () => void;
 }
 
-export function ReattemptDialog({ open, onOpenChange, onSuccess }: ReattemptDialogProps) {
+export function ReattemptDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+}: ReattemptDialogProps) {
   const [password, setPassword] = useState("");
   const [reason, setReason] = useState("");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const reattemptMutation = useMutation({
     mutationFn: async (data: { password: string; reason?: string }) => {
       const headers = await getHeaders();
+
+      if (!headers.Authorization) {
+        throw new Error("User not authenticated");
+      }
+
       const res = await fetch(api.quiz.reattempt.path, {
         method: api.quiz.reattempt.method,
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      
+
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to request reattempt");
+        const err = await res.json();
+        throw new Error(err.message || "Invalid password");
       }
-      
+
       return api.quiz.reattempt.responses[200].parse(await res.json());
     },
+
     onSuccess: (data) => {
       toast({
-        title: "Success!",
+        title: "Reattempt unlocked",
         description: data.message,
       });
+
       setPassword("");
       setReason("");
       onOpenChange(false);
+
+      // CRITICAL: Clear all stale state
+      queryClient.removeQueries({ queryKey: ["active-quiz"] });
+      queryClient.invalidateQueries({ queryKey: [api.quiz.status.path] });
+      queryClient.invalidateQueries({ queryKey: [api.leaderboard.list.path] });
+
       onSuccess?.();
     },
+
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to request reattempt",
+        description: error.message || "Failed to unlock reattempt",
         variant: "destructive",
       });
     },
@@ -68,15 +84,20 @@ export function ReattemptDialog({ open, onOpenChange, onSuccess }: ReattemptDial
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!password.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter the admin password",
+        title: "Missing password",
+        description: "Enter the admin password",
         variant: "destructive",
       });
       return;
     }
-    reattemptMutation.mutate({ password, reason: reason.trim() || undefined });
+
+    reattemptMutation.mutate({
+      password: password.trim(),
+      reason: reason.trim() || undefined,
+    });
   };
 
   return (
@@ -85,40 +106,32 @@ export function ReattemptDialog({ open, onOpenChange, onSuccess }: ReattemptDial
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Lock className="w-5 h-5" />
-            Request Quiz Reattempt
+            Unlock Reattempt
           </DialogTitle>
           <DialogDescription>
-            Enter the admin password to unlock the quiz for another attempt.
-            This action will be logged for security purposes.
+            Enter admin password to reset the quiz.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">
-              Admin Password
-            </label>
+          <div>
+            <label className="text-sm font-medium">Admin Password</label>
             <div className="relative">
               <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                id="password"
                 type="password"
-                placeholder="Enter admin password"
+                placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-10"
-                required
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="reason" className="text-sm font-medium">
-              Reason (Optional)
-            </label>
+          <div>
+            <label className="text-sm font-medium">Reason (optional)</label>
             <Textarea
-              id="reason"
-              placeholder="Why do you need to retake the quiz?"
+              placeholder="Why do you need a reattempt?"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={3}
@@ -128,8 +141,7 @@ export function ReattemptDialog({ open, onOpenChange, onSuccess }: ReattemptDial
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              All reattempt requests are logged with user details, IP address, and timestamp.
-              Unauthorized access will be recorded.
+              This action is logged and audited.
             </AlertDescription>
           </Alert>
 
@@ -138,25 +150,18 @@ export function ReattemptDialog({ open, onOpenChange, onSuccess }: ReattemptDial
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={reattemptMutation.isPending}
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={reattemptMutation.isPending}
-              className="min-w-[100px]"
-            >
+
+            <Button type="submit" disabled={reattemptMutation.isPending}>
               {reattemptMutation.isPending ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Processing...
-                </div>
+                "Processing..."
               ) : (
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  Request Reattempt
-                </div>
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Unlock
+                </>
               )}
             </Button>
           </DialogFooter>

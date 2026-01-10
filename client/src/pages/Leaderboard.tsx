@@ -1,9 +1,10 @@
-import { useLeaderboard } from "@/hooks/use-quiz";
-import { Layout } from "@/components/Layout";
-import { Loader2, Medal, Clock, Target } from "lucide-react";
-import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
+import { useLeaderboard } from "@/hooks/use-quiz";
+import { Trophy, Target, Clock, Medal, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { Layout } from "@/components/Layout";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 export default function Leaderboard() {
   const { data: leaderboard, isLoading } = useLeaderboard();
@@ -72,58 +73,125 @@ export default function Leaderboard() {
 
         {/* List View */}
         <div className="glass-card rounded-2xl overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="bg-white/5 text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="p-4 pl-6 font-medium">Rank</th>
-                <th className="p-4 font-medium">User</th>
-                <th className="p-4 font-medium text-right">Best Score</th>
-                <th className="p-4 font-medium text-right hidden md:table-cell">Total</th>
-                <th className="p-4 font-medium text-right hidden md:table-cell">Attempts</th>
-                <th className="p-4 font-medium text-right hidden md:table-cell">Accuracy</th>
-                <th className="p-4 font-medium text-right hidden md:table-cell">Time</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {leaderboard?.slice(3).map((entry) => (
-                <motion.tr 
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  key={entry.username}
-                  className={cn(
-                    "hover:bg-white/5 transition-colors",
-                    user?.email === entry.username && "bg-primary/10 hover:bg-primary/20" // Assuming username fallback if needed
-                  )}
-                >
-                  <td className="p-4 pl-6 font-mono text-muted-foreground">#{entry.rank}</td>
-                  <td className="p-4 font-medium flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs overflow-hidden">
-                       {entry.profileImageUrl ? (
-                        <img src={entry.profileImageUrl} alt={entry.username} className="w-full h-full object-cover" />
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3 p-4">
+            {leaderboard?.map((entry) => (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                key={entry.username}
+                className={cn(
+                  "p-4 rounded-xl border transition-all",
+                  user?.email === entry.username && "border-primary/30 bg-primary/5"
+                )}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg",
+                      entry.rank === 1 ? "bg-yellow-500 text-white" :
+                      entry.rank === 2 ? "bg-gray-400 text-white" :
+                      entry.rank === 3 ? "bg-orange-600 text-white" :
+                      "bg-white/10 text-white"
+                    )}>
+                      #{entry.rank}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {entry.profileImageUrl ? (
+                        <img src={entry.profileImageUrl} alt={entry.username} className="w-8 h-8 rounded-full" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm">
+                          {entry.username[0]}
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-white">{entry.username}</p>
+                        {user?.email === entry.username && (
+                          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full ml-2">YOU</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-primary">{entry.bestScore}</p>
+                    <p className="text-xs text-muted-foreground">Total: {entry.totalScore}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-1">
+                    <Target className="w-4 h-4 text-muted-foreground" />
+                    <span>{entry.accuracy}%</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span>{entry.timeTaken}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Trophy className="w-4 h-4 text-muted-foreground" />
+                    <span>{entry.attempts}</span>
+                  </div>
+                  <div className="text-right text-xs text-muted-foreground">
+                    {entry.lastAttemptAt && format(new Date(entry.lastAttemptAt), "MMM d")}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <table className="w-full text-left">
+              <thead className="bg-white/5 text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="p-4 pl-6 font-medium">Rank</th>
+                  <th className="p-4 font-medium">User</th>
+                  <th className="p-4 font-medium text-right">Best Score</th>
+                  <th className="p-4 font-medium text-right hidden lg:table-cell">Total</th>
+                  <th className="p-4 font-medium text-right hidden lg:table-cell">Attempts</th>
+                  <th className="p-4 font-medium text-right hidden lg:table-cell">Accuracy</th>
+                  <th className="p-4 font-medium text-right hidden lg:table-cell">Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {leaderboard?.slice(3).map((entry) => (
+                  <motion.tr 
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    key={entry.username}
+                    className={cn(
+                      "hover:bg-white/5 transition-colors",
+                      user?.email === entry.username && "bg-primary/10 hover:bg-primary/20"
+                    )}
+                  >
+                    <td className="p-4 pl-6 font-mono text-muted-foreground">#{entry.rank}</td>
+                    <td className="p-4 font-medium flex items-center gap-3">
+                      {entry.profileImageUrl ? (
+                        <img src={entry.profileImageUrl} alt={entry.username} className="w-8 h-8 rounded-full" />
                       ) : (
                         entry.username[0]
                       )}
-                    </div>
-                    {entry.username}
-                    {user?.firstName === entry.username && (
-                      <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full ml-2">YOU</span>
-                    )}
-                  </td>
-                  <td className="p-4 text-right font-bold text-primary">{entry.bestScore || entry.score}</td>
-                  <td className="p-4 text-right text-muted-foreground hidden md:table-cell">{entry.totalScore || 0}</td>
-                  <td className="p-4 text-right text-muted-foreground hidden md:table-cell">{entry.attempts || 1}</td>
-                  <td className="p-4 text-right text-muted-foreground hidden md:table-cell">{entry.accuracy}%</td>
-                  <td className="p-4 text-right text-muted-foreground font-mono hidden md:table-cell">{entry.timeTaken}</td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-          {leaderboard?.length === 0 && (
-            <div className="p-8 text-center text-muted-foreground">
-              No attempts yet. Be the first to take the quiz!
-            </div>
-          )}
+                      {entry.username}
+                      {user?.email === entry.username && (
+                        <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full ml-2">YOU</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-right font-bold text-primary">{entry.bestScore || entry.score}</td>
+                    <td className="p-4 text-right text-muted-foreground hidden lg:table-cell">{entry.totalScore || 0}</td>
+                    <td className="p-4 text-right text-muted-foreground hidden lg:table-cell">{entry.attempts || 1}</td>
+                    <td className="p-4 text-right text-muted-foreground hidden lg:table-cell">{entry.accuracy}%</td>
+                    <td className="p-4 text-right text-muted-foreground font-mono hidden lg:table-cell">{entry.timeTaken}</td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
+        {leaderboard?.length === 0 && (
+          <div className="p-8 text-center text-muted-foreground">
+            No attempts yet. Be the first to take the quiz!
+          </div>
+        )}
       </div>
     </Layout>
   );

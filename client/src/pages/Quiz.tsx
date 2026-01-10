@@ -1,6 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useStartQuiz, useSubmitAnswer, useFinishQuiz } from "@/hooks/use-quiz";
+import {
+  useSubmitAnswer,
+  useFinishQuiz,
+  useSaveProgress,
+  useRestoreProgress,
+  useQuizStatus,
+} from "@/hooks/use-quiz";
 import { useAuth } from "@/hooks/use-auth";
 import { Layout } from "@/components/Layout";
 import { QuestionCard } from "@/components/QuestionCard";
@@ -11,100 +17,160 @@ import type { StartQuizResponse } from "@shared/schema";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function Quiz() {
-  const [, params] = useRoute("/quiz/:id");
+  const [, params] = useRoute("/quiz/:id?");
   const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
-  const activeQuiz = queryClient.getQueryData<StartQuizResponse>(["active-quiz"]);
-  
+  const { data: quizStatus } = useQuizStatus();
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
-  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [timeElapsed, setTimeElapsed] = useState(0);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [hasRestored, setHasRestored] = useState(false);
 
   const submitAnswer = useSubmitAnswer();
   const finishQuiz = useFinishQuiz();
+  const saveProgress = useSaveProgress();
+  const restoreProgress = useRestoreProgress();
 
-  // If no active quiz data, redirect (simple handling, ideally fetch active attempt)
+  const activeQuiz = queryClient.getQueryData<StartQuizResponse>(["active-quiz"]);
+
+  /* ---------------- RESTORE LOGIC ---------------- */
+
   useEffect(() => {
-    if (!activeQuiz) {
+    if (!isAuthenticated || hasRestored) return;
+
+    if (quizStatus?.activeAttempt && !activeQuiz) {
+      setIsRestoring(true);
+      restoreProgress.mutate(undefined, {
+        onSuccess: (data) => {
+          const cached = queryClient.getQueryData<StartQuizResponse>(["active-quiz"]);
+          if (cached) {
+            setCurrentQuestionIndex(data.currentQuestionIndex || 0);
+            setAnswers(data.answers || {});
+          }
+          setHasRestored(true);
+          setIsRestoring(false);
+        },
+        onError: () => {
+          setIsRestoring(false);
+          setHasRestored(true);
+          setLocation("/");
+        },
+      });
+    } else if (activeQuiz) {
+      setHasRestored(true);
+    } else if (!quizStatus?.activeAttempt) {
+      setHasRestored(true);
       setLocation("/");
     }
-  }, [activeQuiz, setLocation]);
+  }, [quizStatus, activeQuiz, hasRestored, isAuthenticated]);
 
-  // Timer Logic
+  /* ---------------- AUTOSAVE ---------------- */
+
   useEffect(() => {
     if (!activeQuiz) return;
-    
-    // Calculate elapsed time from start
+
+    const interval = setInterval(() => {
+      if (Object.keys(answers).length > 0) {
+        saveProgress.mutate({
+          questionIndex: currentQuestionIndex,
+          answers,
+        });
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [answers, currentQuestionIndex, activeQuiz]);
+
+  /* ---------------- TIMER ---------------- */
+
+  useEffect(() => {
+    if (!activeQuiz) return;
+
     const startTime = new Date(activeQuiz.startTime).getTime();
     const interval = setInterval(() => {
       const now = Date.now();
       const elapsed = Math.floor((now - startTime) / 1000);
-      setTimeLeft(elapsed);
+      setTimeElapsed(elapsed);
     }, 1000);
 
     return () => clearInterval(interval);
   }, [activeQuiz]);
 
-  const handleAnswer = (answer: string | string[]) => {
-    if (!activeQuiz) return;
-    const question = activeQuiz.questions[currentQuestionIndex];
-    
-    // Optimistic update local state
-    setAnswers(prev => ({ ...prev, [question.id]: answer }));
+  /* ---------------- CLEANUP SAVE ---------------- */
 
-    // Sync to server
+  const saveOnExit = useCallback(() => {
+    if (activeQuiz && Object.keys(answers).length > 0) {
+      saveProgress.mutate({
+        questionIndex: currentQuestionIndex,
+        answers,
+      });
+    }
+  }, [activeQuiz, answers, currentQuestionIndex]);
+
+  useEffect(() => {
+    return () => saveOnExit();
+  }, [saveOnExit]);
+
+  /* ---------------- ACTIONS ---------------- */
+
+  const handleAnswer = (answer: any) => {
+    if (!activeQuiz) return;
+    const q = activeQuiz.questions[currentQuestionIndex];
+
+    setAnswers((prev) => ({ ...prev, [q.id]: answer }));
+
     submitAnswer.mutate({
-      questionId: question.id,
-      answer: answer,
+      questionId: q.id,
+      answer,
     });
   };
 
   const handleNext = () => {
     if (!activeQuiz) return;
+
     if (currentQuestionIndex < activeQuiz.questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
+      setCurrentQuestionIndex((p) => p + 1);
     } else {
       finishQuiz.mutate(undefined, {
-        onSuccess: () => setLocation("/")
+        onSuccess: () => setLocation("/"),
       });
     }
   };
 
-  if (!isAuthenticated || !activeQuiz) return null;
+  if (!isAuthenticated || (!hasRestored && !isRestoring)) return null;
+
+  if (isRestoring) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!activeQuiz) return null;
 
   const currentQuestion = activeQuiz.questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / activeQuiz.questions.length) * 100;
-  
-  // Format timer
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
+
+  const minutes = Math.floor(timeElapsed / 60);
+  const seconds = timeElapsed % 60;
 
   return (
     <AntiCheatGuard isActive={true}>
       <Layout>
-        {/* Top Bar */}
-        <div className="fixed top-20 left-0 right-0 z-40 container mx-auto px-4">
-          <div className="flex items-center justify-between py-4">
-            {/* Progress Bar */}
-            <div className="w-full max-w-md h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <motion.div 
-                className="h-full bg-primary"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.5 }}
-              />
-            </div>
-            
-            {/* Timer */}
-            <div className="glass-panel px-4 py-2 rounded-full flex items-center gap-2 font-mono text-lg font-bold text-primary shadow-lg shadow-primary/10">
-              <Timer className="w-4 h-4" />
-              {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-            </div>
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-40">
+          <div className="glass-panel px-6 py-3 rounded-2xl flex items-center gap-3 font-mono text-lg font-bold">
+            <Timer className="w-5 h-5" />
+            {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
           </div>
         </div>
 
-        <div className="pt-16 pb-32">
+        <div className="pt-24 pb-32">
           <QuestionCard
             question={currentQuestion}
             selectedAnswer={answers[currentQuestion.id] || []}
@@ -114,31 +180,24 @@ export default function Quiz() {
           />
         </div>
 
-        {/* Footer Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 p-6 bg-background/80 backdrop-blur-xl border-t border-white/5 z-40">
-          <div className="container max-w-3xl mx-auto flex items-center justify-between">
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-background/90 backdrop-blur-xl">
+          <div className="max-w-3xl mx-auto flex justify-between">
             <button
-              onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
+              onClick={() => setCurrentQuestionIndex((p) => Math.max(0, p - 1))}
               disabled={currentQuestionIndex === 0}
-              className="text-muted-foreground hover:text-white disabled:opacity-50 transition-colors font-medium px-4 py-2"
+              className="opacity-70 hover:opacity-100"
             >
               Previous
             </button>
 
             <button
               onClick={handleNext}
-              disabled={finishQuiz.isPending}
-              className="bg-white text-black px-8 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all flex items-center gap-2 shadow-lg shadow-white/10 hover:shadow-white/20 hover:-translate-y-0.5 active:translate-y-0"
+              className="bg-white text-black px-8 py-3 rounded-xl font-bold"
             >
-              {finishQuiz.isPending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : currentQuestionIndex === activeQuiz.questions.length - 1 ? (
-                "Finish Quiz"
-              ) : (
-                <>
-                  Next Question <ChevronRight className="w-4 h-4" />
-                </>
-              )}
+              {currentQuestionIndex === activeQuiz.questions.length - 1
+                ? "Finish"
+                : "Next"}
+              <ChevronRight className="inline ml-2 w-4 h-4" />
             </button>
           </div>
         </div>
