@@ -1,32 +1,35 @@
-import { users, type User, type UpsertUser } from "@shared/models/auth";
-import { db } from "../../db";
-import { eq } from "drizzle-orm";
+import { User } from "@shared/schema";
+import { DecodedIdToken } from 'firebase-admin/auth';
+import { db } from "../../firebase";
 
-// Interface for auth storage operations
-// (IMPORTANT) These user operations are mandatory for Replit Auth.
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  upsertUser(decodedToken: DecodedIdToken): Promise<User>;
 }
 
 class AuthStorage implements IAuthStorage {
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    const snapshot = await db.ref(`users/${id}`).once('value');
+    return snapshot.val();
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
+  async upsertUser(decodedToken: DecodedIdToken): Promise<User> {
+    const userRef = db.ref(`users/${decodedToken.uid}`);
+    const snapshot = await userRef.once('value');
+    let user = snapshot.val();
+
+    if (!user) {
+      const newUser: User = {
+        id: decodedToken.uid,
+        email: decodedToken.email,
+        firstName: decodedToken.name?.split(' ')[0],
+        profileImageUrl: decodedToken.picture,
+        createdAt: new Date().toISOString(),
+      };
+      await userRef.set(newUser);
+      user = newUser;
+    }
+
     return user;
   }
 }

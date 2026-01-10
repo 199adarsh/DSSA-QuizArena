@@ -7,6 +7,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
+import { DecodedIdToken } from "firebase-admin/auth";
 
 const getOidcConfig = memoize(
   async () => {
@@ -50,14 +51,23 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
-async function upsertUser(claims: any) {
-  await authStorage.upsertUser({
-    id: claims["sub"],
+async function upsertUser(claims: Record<string, any>) {
+  // Create a mock DecodedIdToken object from the claims
+  const mockToken: DecodedIdToken = {
+    uid: claims["sub"],
     email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
-  });
+    name: claims["name"],
+    picture: claims["picture"],
+    aud: claims["aud"] || "",
+    auth_time: claims["auth_time"] || 0,
+    exp: claims["exp"] || 0,
+    firebase: claims["firebase"] || {},
+    iat: claims["iat"] || 0,
+    iss: claims["iss"] || "",
+    sub: claims["sub"],
+  };
+  
+  await authStorage.upsertUser(mockToken);
 }
 
 export async function setupAuth(app: Express) {
@@ -72,10 +82,18 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
+    const claims = tokens.claims() as any;
+    const user = claims ? {
+      id: claims.sub,
+      email: claims.email as string | undefined,
+      firstName: claims.name ? (claims.name as string).split(' ')[0] : undefined,
+      profileImageUrl: claims.picture as string | undefined,
+    } : {};
     updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+    if (claims) {
+      await upsertUser(claims);
+    }
+    verified(null, user as any);
   };
 
   // Keep track of registered strategies
@@ -139,6 +157,15 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   const now = Math.floor(Date.now() / 1000);
   if (now <= user.expires_at) {
+    // Transform user object to match User schema
+    if (user.claims) {
+      req.user = {
+        id: user.claims.sub,
+        email: user.claims.email,
+        firstName: user.claims.name?.split(' ')[0],
+        profileImageUrl: user.claims.picture,
+      };
+    }
     return next();
   }
 
@@ -152,6 +179,15 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     const config = await getOidcConfig();
     const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
+    // Transform user object to match User schema after refresh
+    if (user.claims) {
+      req.user = {
+        id: user.claims.sub,
+        email: user.claims.email,
+        firstName: user.claims.name?.split(' ')[0],
+        profileImageUrl: user.claims.picture,
+      };
+    }
     return next();
   } catch (error) {
     res.status(401).json({ message: "Unauthorized" });

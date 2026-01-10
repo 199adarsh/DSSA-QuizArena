@@ -7,3 +7,11 @@ export interface User {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface UpsertUser {
+  id: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  profileImageUrl?: string | null;
+}
