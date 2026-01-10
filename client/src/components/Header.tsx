@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { LogOut, LayoutDashboard, Trophy, User, Menu, X, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useEffect } from "react";
 
 export function Header() {
   const { user, login, logout, isAuthenticated } = useAuth();
@@ -14,10 +15,52 @@ export function Header() {
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
 
+  // Close mobile menu when location changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location]);
+
   return (
     <>
-      {/* Top Bar */}
-      <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-5xl px-4">
+      {/* Mobile Top Bar */}
+      <header className="md:hidden fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-5xl px-4">
+        <div className="flex h-14 items-center justify-between rounded-full border border-white/20 bg-white/5 backdrop-blur-2xl shadow-lg px-6">
+          
+          {/* Logo - Icon Only */}
+          <button
+            onClick={() => setLocation("/")}
+            className="flex items-center"
+          >
+            <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center font-bold text-xs">
+              Q
+            </div>
+          </button>
+
+          {/* Profile/Sign-in Icon Only */}
+          <div className="flex items-center">
+            {isAuthenticated ? (
+              <button
+                onClick={() => setIsMobileMenuOpen((p) => !p)}
+                className="p-1.5 rounded-full hover:bg-white/10"
+              >
+                <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center font-bold text-xs">
+                  {user?.firstName?.[0] || 'U'}
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={login}
+                className="p-1.5 rounded-full hover:bg-white/10"
+              >
+                <User className="w-4 h-4 text-white/80" />
+              </button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Desktop Top Bar - UNCHANGED */}
+      <header className="hidden md:block fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-5xl px-4">
         <div className="flex h-14 items-center justify-between rounded-full border border-white/20 bg-white/5 backdrop-blur-2xl shadow-lg px-6">
           
           {/* Logo */}
@@ -68,18 +111,6 @@ export function Header() {
                   <span className="text-xs">{user?.firstName}</span>
                 </div>
 
-                {/* Mobile Menu Button */}
-                <button
-                  onClick={() => setIsMobileMenuOpen((p) => !p)}
-                  className="md:hidden p-2 rounded-full hover:bg-white/10"
-                >
-                  {isMobileMenuOpen ? (
-                    <X className="w-5 h-5" />
-                  ) : (
-                    <Menu className="w-5 h-5" />
-                  )}
-                </button>
-
                 {/* Desktop Logout */}
                 <button
                   onClick={() => logout()}
@@ -100,7 +131,47 @@ export function Header() {
         </div>
       </header>
 
-      {/* Mobile Menu */}
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <div className="flex items-center gap-1 rounded-full border border-white/20 bg-white/5 backdrop-blur-2xl shadow-lg px-2 py-2">
+          {navItems.map((item) => (
+            <button
+              key={item.href}
+              onClick={() => setLocation(item.href)}
+              className={cn(
+                "p-3 rounded-full transition-all duration-200",
+                location === item.href
+                  ? "bg-white/15 text-white shadow-lg shadow-white/10"
+                  : "text-white/60 hover:text-white hover:bg-white/10"
+              )}
+            >
+              <item.icon className="w-5 h-5" />
+            </button>
+          ))}
+          
+          <div className="w-px h-6 bg-white/10 mx-1" />
+          
+          {isAuthenticated ? (
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-3 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-all duration-200"
+            >
+              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center font-bold text-xs">
+                {user?.firstName?.[0] || 'U'}
+              </div>
+            </button>
+          ) : (
+            <button
+              onClick={login}
+              className="p-3 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-all duration-200"
+            >
+              <User className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+      </nav>
+
+      {/* Mobile Menu Sheet */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           {/* Backdrop */}
@@ -110,24 +181,18 @@ export function Header() {
           />
 
           {/* Floating Sheet */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm">
+          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm">
             <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-2xl p-4">
               
-              <nav className="space-y-2">
-                {navItems.map((item) => (
-                  <button
-                    key={item.href}
-                    onClick={() => {
-                      setLocation(item.href);
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 text-left"
-                  >
-                    <item.icon className="w-5 h-5" />
-                    {item.label}
-                  </button>
-                ))}
-              </nav>
+              <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10">
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center font-bold">
+                  {user?.firstName?.[0] || 'U'}
+                </div>
+                <div>
+                  <p className="font-medium text-white">{user?.firstName}</p>
+                  <p className="text-xs text-white/60">Profile</p>
+                </div>
+              </div>
 
               {isAuthenticated && (
                 <button
@@ -135,7 +200,7 @@ export function Header() {
                     logout();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="w-full mt-6 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/20 text-red-300"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/20 text-red-300"
                 >
                   <LogOut className="w-5 h-5" />
                   Sign Out

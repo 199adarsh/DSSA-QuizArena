@@ -15,7 +15,7 @@ export function Layout({ children }: LayoutProps) {
 
       <Header />
 
-      <main className="flex-1 pt-24 pb-20 container mx-auto px-4 relative z-10">
+      <main className="flex-1 pt-24 pb-32 md:pb-20 container mx-auto px-4 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}

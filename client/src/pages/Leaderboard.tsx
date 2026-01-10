@@ -42,24 +42,24 @@ export default function Leaderboard() {
         </div>
 
         {/* 🥇 Top 3 Podium */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-8 md:mb-12 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-6 mb-6 md:mb-12 items-end">
           {topThree.map((entry) => (
             <div
               key={entry.username}
               className={cn(
-                "glass-card p-3 sm:p-4 md:p-6 rounded-xl md:rounded-2xl flex flex-col items-center relative border-t-4",
+                "glass-card p-2 sm:p-3 md:p-6 rounded-xl md:rounded-2xl flex flex-col items-center relative border-t-4",
                 entry.rank === 1
-                  ? "order-1 sm:order-1 md:order-2 h-48 sm:h-52 md:h-72 border-yellow-500 bg-yellow-500/5"
+                  ? "order-1 sm:order-1 md:order-2 h-32 sm:h-40 md:h-72 border-yellow-500 bg-yellow-500/5"
                   : entry.rank === 2
-                  ? "order-2 sm:order-2 md:order-1 h-44 sm:h-48 md:h-64 border-gray-400 bg-gray-400/5"
-                  : "order-3 h-40 sm:h-44 md:h-60 border-orange-700 bg-orange-700/5"
+                  ? "order-2 sm:order-2 md:order-1 h-28 sm:h-36 md:h-64 border-gray-400 bg-gray-400/5"
+                  : "order-3 h-24 sm:h-32 md:h-60 border-orange-700 bg-orange-700/5"
               )}
             >
               {entry.rank === 1 && (
                 <Medal className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 text-yellow-500 absolute -top-3 sm:-top-4 md:-top-5" />
               )}
 
-              <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full bg-white/10 mb-2 sm:mb-3 md:mb-4 mt-3 sm:mt-4 md:mt-6 overflow-hidden">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-16 md:h-16 rounded-full bg-white/10 mb-1 sm:mb-2 md:mb-4 mt-2 sm:mt-3 md:mt-6 overflow-hidden">
                 {entry.profileImageUrl && !imageErrors.has(entry.username) ? (
                   <img
                     src={entry.profileImageUrl}
@@ -74,7 +74,14 @@ export default function Leaderboard() {
                 )}
               </div>
 
-              <div className="font-bold text-xs sm:text-sm md:text-lg mb-1">{entry.username}</div>
+              <div className="font-bold text-xs sm:text-sm md:text-lg mb-1">
+                {entry.username}
+                {user?.firstName === entry.username && (
+                  <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                    YOU
+                  </span>
+                )}
+              </div>
               <div className="text-lg sm:text-xl md:text-3xl font-bold text-primary mb-1 sm:mb-2">
                 {entry.bestScore} pts
               </div>
@@ -111,12 +118,14 @@ export default function Leaderboard() {
                     #{entry.rank}
                   </div>
                   <div>
-                    <p className="font-medium text-sm sm:text-base">{entry.username}</p>
-                    {user?.firstName === entry.username && (
-                      <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-                        YOU
-                      </span>
-                    )}
+                    <p className="font-medium text-sm sm:text-base">
+                      {entry.username}
+                      {user?.firstName === entry.username && (
+                        <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                          YOU
+                        </span>
+                      )}
+                    </p>
                   </div>
                 </div>
 
@@ -135,9 +144,7 @@ export default function Leaderboard() {
                 <div className="flex items-center gap-1">
                   <Clock className="w-3 h-3 sm:w-4 sm:h-4" /> {entry.timeTaken}
                 </div>
-                <div className="flex items-center gap-1">
-                  <Trophy className="w-3 h-3 sm:w-4 sm:h-4" /> {entry.attempts}
-                </div>
+            
                 <div className="text-right text-xs text-muted-foreground">
                   {entry.lastAttemptAt &&
                     format(new Date(entry.lastAttemptAt), "MMM d")}
@@ -156,14 +163,14 @@ export default function Leaderboard() {
                 <th className="p-4">User</th>
                 <th className="p-4 text-right">Best</th>
               
-                <th className="p-4 text-right">Attempts</th>
+
                 <th className="p-4 text-right">Accuracy</th>
                 <th className="p-4 text-right">Time</th>
               </tr>
             </thead>
             <tbody>
               {leaderboard?.map((entry) => (
-                <tr
+                <tr 
                   key={entry.username}
                   className={cn(
                     "border-b border-white/5",
@@ -171,11 +178,17 @@ export default function Leaderboard() {
                   )}
                 >
                   <td className="p-4">#{entry.rank}</td>
-                  <td className="p-4">{entry.username}</td>
+                  <td className="p-4">
+                    {entry.username}
+                    {user?.firstName === entry.username && (
+                      <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                        YOU
+                      </span>
+                    )}
+                  </td>
                   <td className="p-4 text-right text-primary font-bold">
                     {entry.bestScore}
                   </td>
-                  <td className="p-4 text-right">{entry.attempts}</td>
                   <td className="p-4 text-right">{entry.accuracy}%</td>
                   <td className="p-4 text-right">{entry.timeTaken}</td>
                 </tr>
