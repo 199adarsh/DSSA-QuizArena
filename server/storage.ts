@@ -41,11 +41,18 @@ export class FirebaseStorage implements IStorage {
   }
 
   async getAttempt(userId: string): Promise<Attempt | undefined> {
-    const snapshot = await db.ref('attempts').orderByChild('userId').equalTo(userId).limitToLast(1).once('value');
+    console.log('Getting attempt for user:', userId);
+    const snapshot = await db.ref('attempts').orderByChild('userId').equalTo(userId).once('value');
     const attempts = snapshot.val();
-    if (!attempts) return undefined;
+    console.log('Raw attempts data:', attempts);
+    if (!attempts) {
+      console.log('No attempts found for user');
+      return undefined;
+    }
     const attemptId = Object.keys(attempts)[0];
-    return { ...attempts[attemptId], id: attemptId };
+    const attempt = { ...attempts[attemptId], id: attemptId };
+    console.log('Returning attempt:', attempt);
+    return attempt;
   }
 
   async createAttempt(userId: string): Promise<Attempt> {
@@ -116,11 +123,20 @@ export class FirebaseStorage implements IStorage {
   }
 
   async deleteAttempt(userId: string): Promise<void> {
+    console.log('Attempting to delete attempt for user:', userId);
     const snapshot = await db.ref('attempts').orderByChild('userId').equalTo(userId).once('value');
     const attempts = snapshot.val();
+    console.log('Found attempts:', attempts);
     if (attempts) {
-      const attemptId = Object.keys(attempts)[0];
-      await db.ref(`attempts/${attemptId}`).remove();
+      const attemptIds = Object.keys(attempts);
+      console.log('Deleting attempt IDs:', attemptIds);
+      // Delete all attempts for this user (there should only be one)
+      await Promise.all(
+        attemptIds.map(attemptId => db.ref(`attempts/${attemptId}`).remove())
+      );
+      console.log('Successfully deleted attempts');
+    } else {
+      console.log('No attempts found to delete');
     }
   }
 }

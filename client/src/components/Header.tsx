@@ -16,10 +16,10 @@ export function Header() {
     <header className="fixed top-0 w-full z-50 border-b border-white/5 bg-background/50 backdrop-blur-xl">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group cursor-pointer">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold font-display shadow-lg shadow-primary/25 group-hover:shadow-primary/50 transition-all">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold font-mona shadow-lg shadow-primary/25 group-hover:shadow-primary/50 transition-all">
             Q
           </div>
-          <span className="font-display font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
+          <span className="font-mona font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
             DSSA-Quizzyy
           </span>
         </Link>

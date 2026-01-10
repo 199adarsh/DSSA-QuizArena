@@ -23,7 +23,7 @@ export default function Leaderboard() {
     <Layout>
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">Global Leaderboard</h1>
+          <h1 className="text-4xl md:text-5xl font-mona font-bold mb-4">Global Leaderboard</h1>
           <p className="text-muted-foreground">Top performers ranked by score and speed</p>
         </div>
 
@@ -54,7 +54,7 @@ export default function Leaderboard() {
               </div>
               
               <div className="font-bold text-lg mb-1">{entry.username}</div>
-              <div className="text-3xl font-display font-bold text-primary mb-2">{entry.score} pts</div>
+              <div className="text-3xl font-mona font-bold text-primary mb-2">{entry.score} pts</div>
               <div className="flex items-center gap-4 text-xs text-muted-foreground mt-auto w-full justify-center border-t border-white/5 pt-4">
                 <span className="flex items-center gap-1">
                   <Target className="w-3 h-3" /> {entry.accuracy}%

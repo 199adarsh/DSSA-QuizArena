@@ -15,11 +15,20 @@ export function useQuizStatus() {
   return useQuery({
     queryKey: [api.quiz.status.path],
     queryFn: async () => {
+      console.log('Fetching quiz status...');
       const headers = await getHeaders();
       const res = await fetch(api.quiz.status.path, { headers });
-      if (res.status === 401) return null;
-      if (!res.ok) throw new Error("Failed to fetch quiz status");
-      return api.quiz.status.responses[200].parse(await res.json());
+      if (res.status === 401) {
+        console.log('User not authenticated');
+        return null;
+      }
+      if (!res.ok) {
+        console.error('Failed to fetch quiz status:', res.status);
+        throw new Error("Failed to fetch quiz status");
+      }
+      const data = await res.json();
+      console.log('Quiz status response:', data);
+      return api.quiz.status.responses[200].parse(data);
     },
   });
 }
@@ -51,9 +60,10 @@ export function useStartQuiz() {
       queryClient.setQueryData(["active-quiz"], data);
     },
     onError: (error) => {
+      console.error('Start quiz error:', error);
       toast({
         title: "Error starting quiz",
-        description: error.message,
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     },

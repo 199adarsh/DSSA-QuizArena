@@ -29,43 +29,49 @@ export default function Home() {
   if (!isAuthenticated) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[80vh] text-center max-w-4xl mx-auto">
+        <div className="flex min-h-[80vh] items-center justify-center px-6">
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="relative z-10"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="max-w-4xl text-center"
           >
-            <h1 className="text-6xl md:text-8xl font-display font-bold mb-6 tracking-tight">
-              Test Your <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-400 to-accent text-glow">
-                Knowledge
-              </span>
-            </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-10 font-light">
-              Compete in real-time engineering challenges. Climb the leaderboard. Prove your skills.
+            <p className="mb-4 text-xs uppercase tracking-[0.3em] text-neutral-400">
+              AI-powered learning platform
             </p>
+
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white">
+            <span className="block md:inline">DSSA</span>{" "}
+            <span className="block md:inline">Quiz Arena</span>
+          </h1>
+
+
+            <p className="mt-6 text-lg md:text-xl text-neutral-400 max-w-2xl mx-auto">
+              A next-generation competitive environment for future data scientists.
+            </p>
+
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => login()}
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-black font-bold text-lg shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all"
+              className="mt-10 inline-flex items-center gap-2 rounded-full border border-white/20 px-8 py-4 text-white backdrop-blur-md hover:bg-white/5 transition-all"
             >
-              Start Challenge <ArrowRight className="w-5 h-5" />
+              Start Challenge
+              <ArrowRight className="w-5 h-5" />
             </motion.button>
           </motion.div>
         </div>
+
       </Layout>
     );
   }
 
   // Authenticated Dashboard
   return (
-    <>
-      <Layout>
+    <Layout>
         <div className="max-w-5xl mx-auto">
           <header className="mb-12">
-            <h1 className="text-4xl font-display font-bold mb-2">Welcome back, {user?.firstName}</h1>
+            <h1 className="text-4xl font-mona font-bold mb-2">Welcome back, {user?.firstName}</h1>
             <p className="text-muted-foreground text-lg">Ready for today's challenge?</p>
           </header>
 
@@ -101,7 +107,7 @@ export default function Home() {
                 <div className="relative z-10">
                   <div className="mb-6 space-y-2">
                     <p className="text-muted-foreground">Last Attempt Score</p>
-                    <div className="text-5xl font-display font-bold text-primary">
+                    <div className="text-5xl font-mona font-bold text-primary">
                       {status.completedAttempt.score} pts
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -179,7 +185,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </Layout>
       <PasswordDialog
         isOpen={isPasswordDialogOpen}
         onClose={() => setIsPasswordDialogOpen(false)}
@@ -194,6 +199,6 @@ export default function Home() {
           });
         }}
       />
-    </>
+    </Layout>
   );
 }

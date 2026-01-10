@@ -73,19 +73,21 @@ export async function registerRoutes(
   app.post(api.quiz.start.path, requireAuth, async (req: any, res) => {
     const userId = req.user!.uid;
     const existingAttempt = await storage.getAttempt(userId);
+    console.log('Existing attempt for user', userId, ':', existingAttempt);
 
-    if (existingAttempt) {
-      if (existingAttempt.status === "IN_PROGRESS") {
-        return res.status(201).json({
-          attemptId: existingAttempt.id,
-          questions: QUESTIONS.map(({ correctAnswer, explanation, ...q }) => q),
-          startTime: existingAttempt.startedAt,
-        });
-      }
+    if (existingAttempt && existingAttempt.status === "IN_PROGRESS") {
+      console.log('Quiz is in progress, returning existing attempt');
+      return res.status(201).json({
+        attemptId: existingAttempt.id,
+        questions: QUESTIONS.map(({ correctAnswer, explanation, ...q }) => q),
+        startTime: existingAttempt.startedAt,
+      });
+    }
 
-      return res
-        .status(400)
-        .json({ message: "You have already attempted the quiz." });
+    if (existingAttempt && existingAttempt.status !== "IN_PROGRESS") {
+      // Allow starting a new quiz if the previous one is completed or timed out
+      console.log('Deleting completed attempt with status:', existingAttempt.status);
+      await storage.deleteAttempt(userId);
     }
 
     const attempt = await storage.createAttempt(userId);

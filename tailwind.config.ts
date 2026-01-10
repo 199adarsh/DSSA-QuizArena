@@ -83,8 +83,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
-        display: ["Space Grotesk", "sans-serif"],
+        mona: ["Mona Sans", "sans-serif"],
+        sans: ["Mona Sans", "sans-serif"],
+        display: ["Mona Sans", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
       },
       keyframes: {

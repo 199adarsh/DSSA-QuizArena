@@ -48,7 +48,13 @@ export function useAuth() {
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error: any) {
+      if (error.code !== 'auth/cancelled-popup-request' && error.code !== 'auth/popup-closed-by-user') {
+        console.error('Firebase login error:', error);
+      }
+    }
   };
 
   const logoutMutation = useMutation({

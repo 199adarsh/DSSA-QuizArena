@@ -58,7 +58,7 @@ export function QuestionCard({ question, selectedAnswer, onAnswer, index, total 
 
       {/* Question Text */}
       <div className="glass-card p-8 rounded-2xl mb-8">
-        <h2 className="text-2xl md:text-3xl font-display font-bold leading-tight mb-6">
+        <h2 className="text-2xl md:text-3xl font-mona font-bold leading-tight mb-6">
           {question.text}
         </h2>
 
