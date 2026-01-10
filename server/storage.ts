@@ -1,5 +1,5 @@
 import { db } from './db';
-import { User, Attempt, InsertAttempt } from '@shared/schema';
+import { User, Attempt, InsertAttempt, LeaderboardEntry, ReattemptLog } from '@shared/schema';
 
 import { DecodedIdToken } from 'firebase-admin/auth';
 
@@ -10,8 +10,12 @@ export interface IStorage {
   createAttempt(userId: string): Promise<Attempt>;
   updateAttempt(attemptId: string, updates: Partial<InsertAttempt>): Promise<Attempt>;
   finishAttempt(attemptId: string, score: number, accuracy: number, timeTakenSeconds: number): Promise<Attempt>;
-  getLeaderboard(): Promise<(Attempt & { user: User })[]>;
+  getLeaderboard(): Promise<LeaderboardEntry[]>;
   deleteAttempt(userId: string): Promise<void>;
+  getUserAttempts(userId: string): Promise<Attempt[]>;
+  updateUserStats(userId: string, stats: Partial<User>): Promise<void>;
+  logReattempt(userId: string, granted: boolean, reason?: string, ipAddress?: string, userAgent?: string): Promise<void>;
+  getReattemptLogs(userId?: string): Promise<ReattemptLog[]>;
 }
 
 export class FirebaseStorage implements IStorage {
@@ -80,6 +84,9 @@ export class FirebaseStorage implements IStorage {
 
   async finishAttempt(attemptId: string, score: number, accuracy: number, timeTakenSeconds: number): Promise<Attempt> {
     const attemptRef = db.ref(`attempts/${attemptId}`);
+    const snapshot = await attemptRef.once('value');
+    const attempt = snapshot.val();
+    
     const updates = {
       status: 'COMPLETED',
       completedAt: new Date().toISOString(),
@@ -88,38 +95,141 @@ export class FirebaseStorage implements IStorage {
       timeTakenSeconds
     };
     await attemptRef.update(updates);
-    const snapshot = await attemptRef.once('value');
-    return { ...snapshot.val(), id: attemptId };
+    
+    // Update user statistics
+    const user = await this.getUser(attempt.userId);
+    if (user) {
+      const totalAttempts = (user.totalAttempts || 0) + 1;
+      const totalScore = (user.totalScore || 0) + score;
+      const bestScore = Math.max(user.bestScore || 0, score);
+      
+      // Set next retake time (24 hours from now)
+      const canRetakeAt = new Date();
+      canRetakeAt.setHours(canRetakeAt.getHours() + 24);
+      
+      await this.updateUserStats(attempt.userId, {
+        totalAttempts,
+        totalScore,
+        bestScore,
+        lastAttemptAt: new Date().toISOString(),
+        canRetakeAt: canRetakeAt.toISOString()
+      });
+    }
+    
+    return { ...attempt, ...updates, id: attemptId };
   }
 
-  async getLeaderboard(): Promise<(Attempt & { user: User })[]> {
-    const attemptsSnapshot = await db.ref('attempts').orderByChild('score').limitToLast(50).once('value');
-    const attempts = attemptsSnapshot.val() || {};
-    const leaderboard: (Attempt & { user: User })[] = [];
+  async getLeaderboard(): Promise<LeaderboardEntry[]> {
+    const usersSnapshot = await db.ref('users').once('value');
+    const users = usersSnapshot.val() || {};
+    
+    const leaderboard: LeaderboardEntry[] = [];
 
-    for (const attemptId in attempts) {
-      const attempt = attempts[attemptId];
-      if (attempt.status === 'COMPLETED') {
-        const user = await this.getUser(attempt.userId);
-        if (user) {
-          leaderboard.push({ ...attempt, id: attemptId, user });
+    for (const userId in users) {
+      const user = users[userId];
+      if (user.totalAttempts && user.totalAttempts > 0) {
+        const attemptsSnapshot = await db.ref('attempts').orderByChild('userId').equalTo(userId).once('value');
+        const attempts = attemptsSnapshot.val() || {};
+        
+        let bestScore = 0;
+        let bestAccuracy = 0;
+        let bestTime = 0;
+        let lastAttemptAt = user.lastAttemptAt;
+
+        // Find the best attempt
+        for (const attemptId in attempts) {
+          const attempt = attempts[attemptId];
+          if (attempt.status === 'COMPLETED' && attempt.score > bestScore) {
+            bestScore = attempt.score;
+            bestAccuracy = attempt.accuracy || 0;
+            bestTime = attempt.timeTakenSeconds || 0;
+          }
         }
+
+        leaderboard.push({
+          rank: 0, // Will be set after sorting
+          username: user.firstName || 'Anonymous',
+          score: bestScore, // Current best score for display
+          bestScore,
+          totalScore: user.totalScore || 0,
+          attempts: user.totalAttempts || 0,
+          accuracy: bestAccuracy,
+          timeTaken: `${bestTime}s`,
+          profileImageUrl: user.profileImageUrl,
+          lastAttemptAt
+        });
       }
     }
 
-    return leaderboard.sort((a, b) => {
-      const scoreA = a.score || 0;
-      const scoreB = b.score || 0;
-      if (scoreB !== scoreA) return scoreB - scoreA;
-
-      const accuracyA = a.accuracy || 0;
-      const accuracyB = b.accuracy || 0;
-      if (accuracyB !== accuracyA) return accuracyB - accuracyA;
-
-      const timeA = a.timeTakenSeconds || 0;
-      const timeB = b.timeTakenSeconds || 0;
-      return timeA - timeB;
+    // Sort by best score, then accuracy, then time
+    leaderboard.sort((a, b) => {
+      if (b.bestScore !== a.bestScore) return b.bestScore - a.bestScore;
+      if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+      return parseInt(a.timeTaken) - parseInt(b.timeTaken);
     });
+
+    // Assign ranks
+    leaderboard.forEach((entry, index) => {
+      entry.rank = index + 1;
+    });
+
+    return leaderboard.slice(0, 50); // Top 50
+  }
+
+  async getUserAttempts(userId: string): Promise<Attempt[]> {
+    const snapshot = await db.ref('attempts').orderByChild('userId').equalTo(userId).once('value');
+    const attempts = snapshot.val() || {};
+    
+    const userAttempts: Attempt[] = [];
+    for (const attemptId in attempts) {
+      userAttempts.push({ ...attempts[attemptId], id: attemptId });
+    }
+    
+    return userAttempts.sort((a, b) => 
+      new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+    );
+  }
+
+  async updateUserStats(userId: string, stats: Partial<User>): Promise<void> {
+    const userRef = db.ref(`users/${userId}`);
+    await userRef.update({
+      ...stats,
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  async logReattempt(userId: string, granted: boolean, reason?: string, ipAddress?: string, userAgent?: string): Promise<void> {
+    const reattemptRef = db.ref('reattempts').push();
+    const logEntry: ReattemptLog = {
+      id: reattemptRef.key!,
+      userId,
+      timestamp: new Date().toISOString(),
+      reason,
+      granted,
+      ipAddress,
+      userAgent
+    };
+    await reattemptRef.set(logEntry);
+  }
+
+  async getReattemptLogs(userId?: string): Promise<ReattemptLog[]> {
+    let snapshot;
+    if (userId) {
+      snapshot = await db.ref('reattempts').orderByChild('userId').equalTo(userId).once('value');
+    } else {
+      snapshot = await db.ref('reattempts').once('value');
+    }
+    
+    const logs = snapshot.val() || {};
+    const reattemptLogs: ReattemptLog[] = [];
+    
+    for (const logId in logs) {
+      reattemptLogs.push({ ...logs[logId], id: logId });
+    }
+    
+    return reattemptLogs.sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
   }
 
   async deleteAttempt(userId: string): Promise<void> {

@@ -28,8 +28,23 @@ export function useAuth() {
         console.log('Firebase ID Token:', token);
       }
       setFirebaseUser(user);
+      
+      // Always clear quiz-related data when auth state changes
+      queryClient.removeQueries({ queryKey: ['/api/quiz/status'] });
+      queryClient.removeQueries({ queryKey: ['active-quiz'] });
+      queryClient.removeQueries({ queryKey: ['/api/leaderboard/list'] });
+      
       if (user) {
+        // Invalidate and refetch user data
         queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+        // Force refetch quiz status after a short delay to ensure auth is fully set
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['/api/quiz/status'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/leaderboard/list'] });
+        }, 100);
+      } else {
+        // Clear all cached data when logged out
+        queryClient.clear();
       }
       setIsLoading(false);
     });
@@ -60,6 +75,8 @@ export function useAuth() {
   const logoutMutation = useMutation({
     mutationFn: () => signOut(auth),
     onSuccess: () => {
+      // Clear all cached data when logging out
+      queryClient.clear();
       queryClient.setQueryData(['/api/auth/user', firebaseUser?.uid], null);
       setFirebaseUser(null);
     },

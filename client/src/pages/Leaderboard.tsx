@@ -54,13 +54,16 @@ export default function Leaderboard() {
               </div>
               
               <div className="font-bold text-lg mb-1">{entry.username}</div>
-              <div className="text-3xl font-mona font-bold text-primary mb-2">{entry.score} pts</div>
+              <div className="text-3xl font-mona font-bold text-primary mb-2">{entry.bestScore} pts</div>
+              <div className="text-xs text-muted-foreground mb-4">
+                Total: {entry.totalScore} pts • {entry.attempts} attempts
+              </div>
               <div className="flex items-center gap-4 text-xs text-muted-foreground mt-auto w-full justify-center border-t border-white/5 pt-4">
                 <span className="flex items-center gap-1">
                   <Target className="w-3 h-3" /> {entry.accuracy}%
                 </span>
                 <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {entry.timeTaken}s
+                  <Clock className="w-3 h-3" /> {entry.timeTaken}
                 </span>
               </div>
             </div>
@@ -74,7 +77,9 @@ export default function Leaderboard() {
               <tr>
                 <th className="p-4 pl-6 font-medium">Rank</th>
                 <th className="p-4 font-medium">User</th>
-                <th className="p-4 font-medium text-right">Score</th>
+                <th className="p-4 font-medium text-right">Best Score</th>
+                <th className="p-4 font-medium text-right hidden md:table-cell">Total</th>
+                <th className="p-4 font-medium text-right hidden md:table-cell">Attempts</th>
                 <th className="p-4 font-medium text-right hidden md:table-cell">Accuracy</th>
                 <th className="p-4 font-medium text-right hidden md:table-cell">Time</th>
               </tr>
@@ -104,9 +109,11 @@ export default function Leaderboard() {
                       <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full ml-2">YOU</span>
                     )}
                   </td>
-                  <td className="p-4 text-right font-bold text-primary">{entry.score}</td>
+                  <td className="p-4 text-right font-bold text-primary">{entry.bestScore || entry.score}</td>
+                  <td className="p-4 text-right text-muted-foreground hidden md:table-cell">{entry.totalScore || 0}</td>
+                  <td className="p-4 text-right text-muted-foreground hidden md:table-cell">{entry.attempts || 1}</td>
                   <td className="p-4 text-right text-muted-foreground hidden md:table-cell">{entry.accuracy}%</td>
-                  <td className="p-4 text-right text-muted-foreground font-mono hidden md:table-cell">{entry.timeTaken}s</td>
+                  <td className="p-4 text-right text-muted-foreground font-mono hidden md:table-cell">{entry.timeTaken}</td>
                 </motion.tr>
               ))}
             </tbody>

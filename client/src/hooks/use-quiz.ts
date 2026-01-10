@@ -11,11 +11,13 @@ async function getHeaders(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${token}` };
 }
 
+export { getHeaders };
+
 export function useQuizStatus() {
   return useQuery({
     queryKey: [api.quiz.status.path],
     queryFn: async () => {
-      console.log('Fetching quiz status...');
+      console.log('Fetching quiz status...', auth.currentUser?.uid);
       const headers = await getHeaders();
       const res = await fetch(api.quiz.status.path, { headers });
       if (res.status === 401) {
@@ -28,8 +30,9 @@ export function useQuizStatus() {
       }
       const data = await res.json();
       console.log('Quiz status response:', data);
-      return api.quiz.status.responses[200].parse(data);
+      return data; // Return the full response including nextRetakeAt
     },
+    enabled: !!auth.currentUser,
   });
 }
 
@@ -159,5 +162,6 @@ export function useLeaderboard() {
       if (!res.ok) throw new Error("Failed to fetch leaderboard");
       return api.leaderboard.list.responses[200].parse(await res.json());
     },
+    enabled: !!auth.currentUser,
   });
 }

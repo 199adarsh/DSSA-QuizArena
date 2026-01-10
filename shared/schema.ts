@@ -5,6 +5,22 @@ export * from "./models/auth";
 // Quiz Configuration Types (stored in JSON/Code, not DB, but types are shared)
 export type QuestionType = "MCQ_SINGLE" | "MCQ_MULTI" | "TRUE_FALSE" | "CODE";
 
+export interface User {
+  id: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  profileImageUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  // Quiz statistics
+  totalAttempts?: number;
+  bestScore?: number;
+  totalScore?: number;
+  lastAttemptAt?: string;
+  canRetakeAt?: string; // When user can retake the quiz
+}
+
 export interface Question {
   id: string;
   type: QuestionType;
@@ -41,6 +57,7 @@ export interface QuizStatusResponse {
   canAttempt: boolean;
   activeAttempt?: Attempt;
   completedAttempt?: Attempt;
+  nextRetakeAt?: string; // When user can retake the quiz
 }
 
 export interface StartQuizResponse {
@@ -54,11 +71,25 @@ export interface SubmitAnswerRequest {
   answer: string | string[];
 }
 
+export interface ReattemptLog {
+  id: string;
+  userId: string;
+  timestamp: string;
+  reason?: string;
+  granted: boolean;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
 export interface LeaderboardEntry {
   rank: number;
   username: string;
   score: number;
+  bestScore: number;
+  totalScore: number;
+  attempts: number;
   accuracy: number;
   timeTaken: string; // formatted string or seconds
   profileImageUrl?: string;
+  lastAttemptAt?: string;
 }

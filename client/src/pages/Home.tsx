@@ -1,12 +1,14 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuizStatus, useStartQuiz, useLeaderboard, useRestartQuiz } from "@/hooks/use-quiz";
-import { Loader2, Play, Trophy, RotateCcw, ArrowRight } from "lucide-react";
+import { Loader2, Play, Trophy, RotateCcw, ArrowRight, Lock, Key } from "lucide-react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { Layout } from "@/components/Layout";
 import { PasswordDialog } from '@/components/PasswordDialog';
+import { ReattemptDialog } from '@/components/ReattemptDialog';
 import { useState } from 'react';
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Home() {
   const { user, isAuthenticated, isLoading: authLoading, login } = useAuth();
@@ -15,7 +17,9 @@ export default function Home() {
   const startQuiz = useStartQuiz();
   const restartQuiz = useRestartQuiz();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [isReattemptDialogOpen, setIsReattemptDialogOpen] = useState(false);
 
   if (authLoading || (isAuthenticated && statusLoading)) {
     return (
@@ -113,13 +117,46 @@ export default function Home() {
                     <p className="text-sm text-muted-foreground">
                       Completed {format(new Date(status.completedAttempt.completedAt!), "MMM d, h:mm a")}
                     </p>
+                    {status.nextRetakeAt && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Can retake in {format(new Date(status.nextRetakeAt), "MMM d 'at' h:mm a")}
+                      </p>
+                    )}
                   </div>
-                  <button
-                    disabled
-                    className="w-full py-4 rounded-xl bg-white/5 text-muted-foreground font-medium border border-white/5 cursor-not-allowed"
-                  >
-                    Completed for today
-                  </button>
+                  {status.canAttempt ? (
+                    <button
+                      onClick={() => startQuiz.mutate()}
+                      disabled={startQuiz.isPending}
+                      className="w-full py-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2"
+                    >
+                      {startQuiz.isPending ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Play className="w-5 h-5" /> Start New Quiz
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <button
+                        disabled
+                        className="w-full py-4 rounded-xl bg-white/5 text-muted-foreground font-medium border border-white/5 cursor-not-allowed"
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <Lock className="w-4 h-4" />
+                          Quiz Locked - Retake Available Tomorrow
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setIsReattemptDialogOpen(true)}
+                        className="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-all flex items-center justify-center gap-2"
+                      >
+                        <Key className="w-4 h-4" />
+                        Request Reattempt
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="relative z-10">
@@ -197,6 +234,14 @@ export default function Home() {
               });
             },
           });
+        }}
+      />
+      <ReattemptDialog 
+        open={isReattemptDialogOpen}
+        onOpenChange={setIsReattemptDialogOpen}
+        onSuccess={() => {
+          // Invalidate quiz status to refresh the UI
+          queryClient.invalidateQueries({ queryKey: ['/api/quiz/status'] });
         }}
       />
     </Layout>

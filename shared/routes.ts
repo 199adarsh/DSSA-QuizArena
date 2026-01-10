@@ -96,9 +96,27 @@ export const api = {
       method: 'POST' as const,
       path: '/api/quiz/restart',
       responses: {
-        200: z.object({ success: z.boolean() }),
+        200: z.object({
+          success: z.boolean(),
+        }),
+      },
+    },
+    reattempt: {
+      method: 'POST' as const,
+      path: '/api/quiz/reattempt',
+      input: z.object({
+        password: z.string(),
+        reason: z.string().optional(),
+      }),
+      responses: {
+        200: z.object({
+          success: z.boolean(),
+          message: z.string(),
+        }),
         401: errorSchemas.unauthorized,
-        404: errorSchemas.notFound,
+        403: z.object({
+          message: z.string(),
+        }),
       },
     },
   },
@@ -110,10 +128,14 @@ export const api = {
         200: z.array(z.object({
           rank: z.number(),
           username: z.string(),
-          score: z.number(),
+          score: z.number(), // Best score for display
+          bestScore: z.number(),
+          totalScore: z.number(),
+          attempts: z.number(),
           accuracy: z.number(),
           timeTaken: z.string(),
           profileImageUrl: z.string().optional().nullable(),
+          lastAttemptAt: z.string().optional(),
         })),
       },
     },
