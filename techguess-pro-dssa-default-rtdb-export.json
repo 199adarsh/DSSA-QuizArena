@@ -1,0 +1,51 @@
+{
+  "attempts": {
+    "-OifMLnuYn0A6_OtF7U2": {
+      "accuracy": 70,
+      "answers": {
+        "q1": "Boolean",
+        "q10": "Moving declarations to the top",
+        "q2": "'number'",
+        "q3": [
+          "let"
+        ],
+        "q4": "Manages state",
+        "q5": "True",
+        "q6": "O(log n)",
+        "q7": "pop()",
+        "q8": "4",
+        "q9": "418"
+      },
+      "completedAt": "2026-01-11T04:43:54.934Z",
+      "currentQuestionIndex": 9,
+      "id": "-OifMLnuYn0A6_OtF7U2",
+      "score": 70,
+      "startedAt": "2026-01-11T04:43:05.949Z",
+      "status": "COMPLETED",
+      "timeTakenSeconds": 48,
+      "userId": "4yI3OxpMjLb3tvLAxlBA86y2gQo2"
+    }
+  },
+  "users": {
+    "4yI3OxpMjLb3tvLAxlBA86y2gQo2": {
+      "bestScore": 90,
+      "canRetakeAt": "2026-01-12T04:43:55.139Z",
+      "createdAt": "2026-01-08T15:51:22.477Z",
+      "email": "adarshherwade11214@gmail.com",
+      "firstName": "ADARSH",
+      "id": "4yI3OxpMjLb3tvLAxlBA86y2gQo2",
+      "lastAttemptAt": "2026-01-11T04:43:55.140Z",
+      "profileImageUrl": "https://lh3.googleusercontent.com/a/ACg8ocLwRjonJjk2Rb8ZSMxDJZdG0CzH3EmaqvBnRHa0iURP5Zkrn6MS=s96-c",
+      "totalAttempts": 5,
+      "totalScore": 300,
+      "updatedAt": "2026-01-11T04:43:55.140Z"
+    },
+    "local-dev-user": {
+      "createdAt": "2026-01-08T15:47:53.944Z",
+      "email": "dev@example.com",
+      "firstName": "Dev",
+      "id": "local-dev-user",
+      "profileImageUrl": "https://www.gravatar.com/avatar/"
+    }
+  }
+}

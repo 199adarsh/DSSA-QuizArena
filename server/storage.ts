@@ -46,17 +46,16 @@ export class FirebaseStorage implements IStorage {
   }
 
   async getAttempt(userId: string): Promise<Attempt | undefined> {
-    console.log('Getting attempt for user:', userId);
     const snapshot = await db.ref('attempts').orderByChild('userId').equalTo(userId).once('value');
     const attempts = snapshot.val();
-    console.log('Raw attempts data:', attempts);
+    if (process.env.NODE_ENV === "development") {
+      console.log('📝 Found attempts for user:', userId, attempts ? 'Yes' : 'No');
+    }
     if (!attempts) {
-      console.log('No attempts found for user');
       return undefined;
     }
     const attemptId = Object.keys(attempts)[0];
     const attempt = { ...attempts[attemptId], id: attemptId };
-    console.log('Returning attempt:', attempt);
     return attempt;
   }
 

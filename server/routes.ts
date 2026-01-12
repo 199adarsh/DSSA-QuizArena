@@ -30,8 +30,7 @@ function validateStateTransition(currentState: string, newState: string): boolea
 
 async function requireAuth(req: any, res: Response, next: NextFunction) {
   const idToken = req.headers.authorization?.split('Bearer ')[1];
-  console.log('Received token on server:', idToken);
-
+  
   if (process.env.NODE_ENV === "development" && !idToken) {
     req.user = {
       uid: "local-dev-user",
@@ -47,7 +46,9 @@ async function requireAuth(req: any, res: Response, next: NextFunction) {
 
   try {
     const decodedToken = await auth.verifyIdToken(idToken);
-    console.log('Decoded token on server:', decodedToken);
+    if (process.env.NODE_ENV === "development") {
+      console.log(`🔐 Authenticated user: ${decodedToken.email} (${decodedToken.uid})`);
+    }
     req.user = decodedToken;
     next();
   } catch (error) {
