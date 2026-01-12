@@ -1,8 +1,83 @@
+# Dependencies
 node_modules
 dist
 .DS_Store
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Environment and Configuration Files
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Firebase and Service Account Files
 firebase.json
 techguess-pro-dssa-firebase-adminsdk-fbsvc-a8430ebcd0.json
+*firebase-adminsdk*.json
+serviceAccountKey.json
+firebase-*.json
+
+# Database and Backup Files
+*.sql
+*.db
+*.sqlite
+*.sqlite3
+techguess-pro-dssa-default-rtdb-export.json
+*export.json
+*backup.json
+
+# Logs and Runtime Files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Security and Certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+certs/
+ssl/
+
+# Build and Distribution
+build/
+dist/
+out/
+.next/
+.nuxt/
+.vuepress/dist/
+
+# Coverage and Testing
+coverage/
+*.lcov
+.nyc_output/
+
+# Temporary Files
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
